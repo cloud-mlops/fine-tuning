@@ -1,0 +1,64 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-sql
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: mlflow-sql
+  template:
+    metadata:
+      labels:
+        app: mlflow-sql
+      annotations:
+        gke-gcsfuse/volumes: "true"
+    spec:
+      serviceAccountName: mlflow
+      containers:
+      - name: mlflow
+        image: ghcr.io/mlflow/mlflow:v2.14.1
+        resources:
+          requests:
+            cpu: "2"
+            memory: "10Gi"
+          limits:
+            cpu: "2"
+            memory: "10Gi"
+        command: ["sh", "-c"]
+        # mlflow prometheus metrics
+        # pip install --no-cache-dir prometheus_flask_exporter
+        # mlflow server --expose-prometheus /metrics
+        args: 
+        - |
+          mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:///mlruns/mlruns.db
+        volumeMounts:
+        - name: gcs-fuse-csi-ephemeral
+          mountPath: /mlruns
+      volumes:
+      - name: gcs-fuse-csi-ephemeral
+        csi:
+          driver: gcsfuse.csi.storage.gke.io
+          volumeAttributes:
+            bucketName: kh-ml-data
+            mountOptions: "implicit-dirs"
+            fileCacheCapacity: "5Gi"       
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow-tracking-service
+  annotations:
+    networking.gke.io/load-balancer-type: "Internal"
+    networking.gke.io/internal-load-balancer-allow-global-access: "true"
+spec:
+  selector:
+    app: mlflow-sql
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000

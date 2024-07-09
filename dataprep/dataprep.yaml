@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dataprep-job
+spec:
+  template:
+    metadata:
+      labels:
+        app: dataprep-job
+    spec:
+      containers:
+      - name: job
+        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/dataprep:v0.1.0
+        imagePullPolicy: Always
+        env:
+        - name: "BUCKET"
+          value: "kh-finetune-ds"
+        - name: "PROJECT_ID"
+          value: "gkebatchexpce3c8dcb"
+        resources:
+          requests:
+            cpu: "7"
+            memory: "25Gi"
+            # ephemeral-storage: "25Gi"
+          limits:
+            cpu: "7"
+            memory: "25Gi"
+            # ephemeral-storage: "25Gi"
+      restartPolicy: Never

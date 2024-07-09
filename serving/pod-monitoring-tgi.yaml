@@ -1,0 +1,14 @@
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: tgi
+  labels:
+    app: tgi-gemma-server
+spec:
+  selector:
+    matchLabels:
+      app: tgi-gemma-server
+  endpoints:
+  - port: 80
+    path: /metrics
+    interval: 15s

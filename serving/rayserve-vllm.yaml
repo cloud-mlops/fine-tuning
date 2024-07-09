@@ -1,0 +1,118 @@
+apiVersion: ray.io/v1
+kind: RayService
+metadata:
+  name: gemma-ft
+spec:
+  serveConfigV2: |
+    applications:
+    - name: llm
+      route_prefix: /
+      import_path: ai-ml.gke-ray.rayserve.llm.serve_chat_completion:model
+      deployments:
+      - name: VLLMDeployment
+        max_ongoing_requests: 5
+        autoscaling_config:
+          target_ongoing_requests: 3
+          min_replicas: 1
+          max_replicas: 4
+        ray_actor_options:
+          num_cpus: 8
+          # NOTE: num_gpus is set automatically based on TENSOR_PARALLELISM
+      runtime_env:
+        working_dir: "https://github.com/GoogleCloudPlatform/kubernetes-engine-samples/archive/main.zip"
+        pip: ["vllm==0.5.0.post1", "jinja2==3.1.4"]
+        env_vars:
+          MODEL_ID: "/model-data/hyperparam/model-job-1"
+          TENSOR_PARALLELISM: "2"
+  rayClusterConfig:
+    enableInTreeAutoscaling: true
+    autoscalerOptions:
+      upscalingMode: Aggressive
+      resources:
+        limits:
+          cpu: "1"
+          memory: "1000Mi"
+        requests:
+          cpu: "1"
+          memory: "1000Mi"
+    headGroupSpec:
+      rayStartParams:
+        dashboard-host: '0.0.0.0'
+      template:
+        metadata:
+          labels:
+            llm: rayserve
+        spec:
+          serviceAccountName: ray-worker
+          containers:
+          - name: ray-head
+            image: rayproject/ray-ml:2.9.0
+            resources:
+              limits:
+                cpu: "2"
+                memory: "8Gi"
+              requests:
+                cpu: "2"
+                memory: "8Gi"
+            ports:
+            - containerPort: 6379
+              name: gcs-server
+            - containerPort: 8265
+              name: dashboard
+            - containerPort: 10001
+              name: client
+            - containerPort: 8000
+              name: serve
+    workerGroupSpecs:
+    - replicas: 1
+      minReplicas: 1 # this needs to be  >0, otherwise autoscaler scales to 0
+      maxReplicas: 4
+      groupName: gpu-group
+      rayStartParams: {}
+      template:
+        metadata:
+          labels:
+            llm: rayserve
+          annotations:
+            gke-gcsfuse/volumes: "true"
+        spec:
+          serviceAccountName: ray-worker
+          containers:
+          - name: llm
+            image: rayproject/ray-ml:2.9.0
+            resources:
+              limits:
+                cpu: "8"
+                memory: "25Gi"
+                nvidia.com/gpu: "2"
+              requests:
+                cpu: "8"
+                memory: "25Gi"
+                nvidia.com/gpu: "2"
+            volumeMounts:
+            - mountPath: /dev/shm
+              name: dshm
+            - name: gcs-fuse-csi-ephemeral
+              mountPath: /model-data
+              readOnly: true          
+          volumes:
+          - name: dshm
+            emptyDir:
+                medium: Memory
+          - name: gcs-fuse-csi-ephemeral
+            csi:
+              driver: gcsfuse.csi.storage.gke.io
+              volumeAttributes:
+                bucketName: kh-test-data
+                mountOptions: "implicit-dirs"
+                fileCacheCapacity: "20Gi"
+          nodeSelector:
+            cloud.google.com/gke-accelerator: nvidia-l4
+          tolerations:
+          - key: "on-demand"
+            value: "true"
+            operator: "Equal"
+            effect: "NoSchedule"
+          - key: "nvidia.com/gpu"
+            operator: "Exists"
+            effect: "NoSchedule"

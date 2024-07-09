@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-openai-0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-openai-0
+  template:
+    metadata:
+      labels:
+        app: vllm-openai-0
+      annotations:
+        gke-gcsfuse/volumes: "true"
+        #gke-gcsfuse/memory-limit: "35Gi"
+    spec:
+      serviceAccountName: ray-worker
+      containers:
+      - name: inference-server
+        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/vllm:20240703
+        resources:
+          requests:
+            cpu: "2"
+            memory: "25Gi"
+            ephemeral-storage: "25Gi"
+            nvidia.com/gpu: "2"
+          limits:
+            cpu: "2"
+            memory: "25Gi"
+            ephemeral-storage: "25Gi"
+            nvidia.com/gpu: "2"
+        args:
+        - --model=$(MODEL)
+        - --tensor-parallel-size=2
+        env:
+        - name: MODEL
+          value: /model-data/hyperparam-gemma2/model-job-0
+        - name: HUGGING_FACE_HUB_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-secret
+              key: hf_api_token
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        - name: gcs-fuse-csi-ephemeral
+          mountPath: /model-data
+          readOnly: true          
+      volumes:
+      - name: dshm
+        emptyDir:
+            medium: Memory
+      - name: gcs-fuse-csi-ephemeral
+        csi:
+          driver: gcsfuse.csi.storage.gke.io
+          volumeAttributes:
+            bucketName: kh-test-data
+            mountOptions: "implicit-dirs"            
+            fileCacheCapacity: "20Gi"
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-l4
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-openai-0
+spec:
+  selector:
+    app: vllm-openai-0
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
