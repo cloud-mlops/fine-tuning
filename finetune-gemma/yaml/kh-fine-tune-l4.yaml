@@ -24,6 +24,8 @@ spec:
       annotations:
         gke-gcsfuse/volumes: "true"
         gke-gcsfuse/memory-limit: "35Gi"
+        cluster-autoscaler.kubernetes.io/consume-provisioning-request: kh-l4-job
+        cluster-autoscaler.kubernetes.io/provisioning-class-name: "queued-provisioning.gke.io"        
     spec:
       subdomain: kh-headless-svc
       serviceAccountName: ray-worker
@@ -31,7 +33,7 @@ spec:
       containers:
       - name: gpu-job
         imagePullPolicy: Always 
-        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:v0.1.44-nq-acc
+        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:v1.0.2
         ports:
         - containerPort: 29500
         securityContext:
@@ -56,17 +58,23 @@ spec:
             fine_tune.py
         env:
         - name: "EXPERIMENT"
-          value: "gemma-nq-acc-l4"        
-        - name: ACCELERATE_LOG_LEVEL
-          value: "DEBUG"
-        - name: "BUCKET"
+          value: "gemma2-l4"
+        - name: "MLFLOW_ENABLE"
+          value: "true"
+        - name: "MLFLOW_TRACKING_URI"
+          value: "http://mlflow-tracking-service.ml-tools:5000"
+        - name: "MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING"
+          value: "true"
+        - name: "TRAINING_DATASET_BUCKET"
           value: "kh-finetune-ds"
+        - name: "TRAINING_DATASET_PATH"
+          value: "/new-format/dataset-it/training"
         - name: MODEL_NAME
-          value: "google/gemma-1.1-7b-it"
+          value: "google/gemma-2-9b-it"
         - name: NEW_MODEL
-          value: "gemma-1.1-7b-it-chatbot"
+          value: "gemma-2-9b-it-chatbot"
         - name: MODEL_PATH
-          value: "/model-data/l4/model-0.1.44-7-nq-acc"
+          value: "/model-data/gemma2-l4/l4-2"
         - name: EPOCHS
           value: "1"
         - name: HF_TOKEN
@@ -92,14 +100,12 @@ spec:
             mountOptions: "implicit-dirs"
       nodeSelector:
         cloud.google.com/gke-accelerator: nvidia-l4
-        resource-type: gpu-l4
-        pool-type: l4-2
       restartPolicy: OnFailure
       tolerations:
       - key: "nvidia.com/gpu"
         operator: "Exists"
         effect: "NoSchedule"
-      - key: "ondemand"
+      - key: "on-demand"
         value: "true"
         operator: "Equal"
         effect: "NoSchedule"

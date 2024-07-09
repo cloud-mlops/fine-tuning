@@ -14,19 +14,23 @@ from accelerate import Accelerator
 from accelerate.logging import get_logger
 logger = get_logger(__name__, log_level="DEBUG")
 
-import mlflow
+if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
+    import mlflow
 
-remote_server_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow-tracking-service.ml-tools:5000")
-mlflow.set_tracking_uri(remote_server_uri)
+    remote_server_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow-tracking-service.ml-tools:5000")
+    mlflow.set_tracking_uri(remote_server_uri)
 
-experiment = os.getenv("EXPERIMENT", "/ex-gemma-unsloth")
+    experiment = os.getenv("EXPERIMENT", "/ex-gemma-unsloth")
 
-mlflow.set_experiment(experiment)
-mlflow.autolog()
+    mlflow.set_experiment(experiment)
+    mlflow.autolog()
 
 accelerator = Accelerator()
 
-BUCKET = os.environ['BUCKET']
+# The bucket which contains the training data
+training_data_bucket = os.getenv("TRAINING_DATASET_BUCKET", "kh-finetune-ds")
+
+training_data_path = os.getenv("TRAINING_DATASET_PATH", "/new-format/dataset-it/training")
 
 # The model that you want to train from the Hugging Face hub
 model_name = os.getenv("MODEL_NAME", "google/gemma-1.1-7b-it")
@@ -34,6 +38,7 @@ model_name = os.getenv("MODEL_NAME", "google/gemma-1.1-7b-it")
 # Fine-tuned model name
 new_model = os.getenv("NEW_MODEL", "gemma-1.1-7b-it-chatbot")
 
+# The root path of where the fine-tuned model will be saved
 save_model_path = os.getenv("MODEL_PATH", "/model-data/model")
 
 # Load tokenizer
@@ -49,7 +54,7 @@ def formatting_prompts_func(example):
         output_texts.append(text)
     return {"prompts": output_texts}
 
-training_dataset = load_from_disk("gs://"+BUCKET+"/new-format/dataset-it/training")
+training_dataset = load_from_disk(f"gs://{training_data_bucket}{training_data_path}")
 
 print("Data Formatting Started")
 input_data = training_dataset.map(formatting_prompts_func, batched=True)
@@ -205,12 +210,13 @@ print("Fine tuning started")
 trainer.train()
 print("Fine tuning completed")
 
-mv = mlflow.register_model(
-    model_uri = f"gs://{BUCKET}/{save_model_path}",
-    name=new_model
-)
-print(f"Name: {mv.name}")
-print(f"Version: {mv.version}")
+if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
+    mv = mlflow.register_model(
+        model_uri = f"gs://{training_data_bucket}/{save_model_path}",
+        name=new_model
+    )
+    print(f"Name: {mv.name}")
+    print(f"Version: {mv.version}")
 
 print("Saving new model")
 trainer.model.save_pretrained(new_model)

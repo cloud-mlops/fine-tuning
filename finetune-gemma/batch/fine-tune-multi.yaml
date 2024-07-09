@@ -51,10 +51,16 @@ spec:
         env:
         - name: "EXPERIMENT"
           value: "gemma-ft-hyperparam"
+        - name: "MLFLOW_ENABLE"
+          value: "true"
+        - name: "MLFLOW_TRACKING_URI"
+          value: "http://mlflow-tracking-service.ml-tools:5000"
         - name: "MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING"
-          value: "true"          
-        - name: "BUCKET"
+          value: "true"
+        - name: "TRAINING_DATASET_BUCKET"
           value: "kh-finetune-ds"
+        - name: "TRAINING_DATASET_PATH"
+          value: "/new-format/dataset-it/training"
         - name: MODEL_NAME
           value: "google/gemma-1.1-7b-it"
         - name: NEW_MODEL

@@ -6,15 +6,15 @@ metadata:
 template:
   spec:
     nodeSelector:
-      cloud.google.com/gke-nodepool: l4-4
+      cloud.google.com/gke-nodepool: gpu-l4x2-g2s24-dws
     tolerations:
     - key: "nvidia.com/gpu"
       operator: "Exists"
       effect: "NoSchedule"
-    - key: "ondemand"
+    - key: "on-demand"
       value: "true"
       operator: "Equal"
-      effect: "NoSchedule"      
+      effect: "NoSchedule"
     containers:
     - name: pi
       image: perl
@@ -22,10 +22,10 @@ template:
       resources:
         limits:
           cpu: "700m"
-          nvidia.com/gpu: 4
+          nvidia.com/gpu: 2
         requests:
           cpu: "700m"
-          nvidia.com/gpu: 4
+          nvidia.com/gpu: 2
     restartPolicy: Never
 ---
 apiVersion: autoscaling.x-k8s.io/v1beta1
@@ -38,6 +38,6 @@ spec:
   parameters:
     maxRunDurationSeconds: "86400"
   podSets:
-  - count: 1
+  - count: 2
     podTemplateRef:
       name: kh-l4-job

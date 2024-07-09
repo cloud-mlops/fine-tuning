@@ -1,0 +1,23 @@
+steps:
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  entrypoint: "bash"
+  args: 
+  - -c 
+  - |
+    gcloud container fleet memberships get-credentials mlp-kenthua
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  entrypoint: "bash"
+  args:
+  - -c
+  - |
+    sed -i -e "s/v1.0.2/${_IMAGE_TAG}/" yaml/kh-fine-tune-l4.yaml
+  dir: "finetune-gemma"
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  entrypoint: "bash"
+  args: 
+  - -c
+  - |
+    kubectl apply -f yaml/kh-fine-tune.yaml -n ml-team
+  dir: "finetune-gemma"
+options:
+  logging: CLOUD_LOGGING_ONLY
