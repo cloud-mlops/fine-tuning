@@ -10,8 +10,8 @@ steps:
   args:
   - -c
   - |
-    sed -i -e "s|J_ID|${_IMAGE_VERSION}|g" -i -e "s|IMAGE_URL|${_IMAGE_TAG}|" yaml/fine-tune-${_ACCELERATOR}.yaml
     sed -i -e "s|J_ID|${_IMAGE_VERSION}|g" yaml/provisioning-request-${_ACCELERATOR}.yaml
+    sed -i -e "s|J_ID|${_IMAGE_VERSION}|g" -i -e "s|IMAGE_URL|${_IMAGE_TAG}|" yaml/fine-tune-${_ACCELERATOR}-dws.yaml
   dir: "finetune-gemma"
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
   entrypoint: "bash"
@@ -19,7 +19,7 @@ steps:
   - -c
   - |
     kubectl apply -f yaml/provisioning-request-${_ACCELERATOR}.yaml -n ml-team
-    kubectl apply -f yaml/fine-tune-${_ACCELERATOR}.yaml -n ml-team
+    kubectl apply -f yaml/fine-tune-${_ACCELERATOR}-dws.yaml -n ml-team
   dir: "finetune-gemma"
 options:
   logging: CLOUD_LOGGING_ONLY

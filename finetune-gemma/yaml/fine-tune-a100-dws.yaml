@@ -11,9 +11,9 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: finetune-gemma-J_ID
-  namespace: ml-team
+  namespace: ml-team  
 spec:
-  backoffLimit: 2
+  backoffLimit: 4
   completions: 1
   parallelism: 1
   completionMode: Indexed
@@ -24,7 +24,7 @@ spec:
       annotations:
         gke-gcsfuse/volumes: "true"
         gke-gcsfuse/memory-limit: "35Gi"
-        cluster-autoscaler.kubernetes.io/consume-provisioning-request: a3-job-J_ID
+        cluster-autoscaler.kubernetes.io/consume-provisioning-request: a100-job-J_ID
         cluster-autoscaler.kubernetes.io/provisioning-class-name: "queued-provisioning.gke.io"
     spec:
       subdomain: headless-svc-J_ID
@@ -40,9 +40,9 @@ spec:
           privileged: true
         resources:
           requests:
-            nvidia.com/gpu: "8"
+            nvidia.com/gpu: "2"
           limits:
-            nvidia.com/gpu: "8"
+            nvidia.com/gpu: "2"
         command:
           - bash
           - -c
@@ -53,12 +53,12 @@ spec:
             --main_process_ip finetune-gemma-J_ID-0.headless-svc-J_ID \
             --main_process_port 29500 \
             --machine_rank ${JOB_COMPLETION_INDEX} \
-            --num_processes 8 \
+            --num_processes 2 \
             --num_machines 1 \
             fine_tune.py
         env:
         - name: "EXPERIMENT"
-          value: "gemma-nq-acc"
+          value: "gemma2-a100"
         - name: "MLFLOW_ENABLE"
           value: "true"
         - name: "MLFLOW_TRACKING_URI"
@@ -74,7 +74,7 @@ spec:
         - name: NEW_MODEL
           value: "gemma-ft"
         - name: MODEL_PATH
-          value: "/model-data/gemma2-a3/a3-J_ID"
+          value: "/model-data/gemma2-a100/a100-J_ID"
         - name: EPOCHS
           value: "1"
         - name: NCCL_DEBUG
@@ -101,8 +101,7 @@ spec:
             bucketName: kr-finetune
             mountOptions: "implicit-dirs"
       nodeSelector:
-        cloud.google.com/gke-accelerator: nvidia-h100-80gb
-        resource-model: h100
+        cloud.google.com/gke-accelerator: nvidia-tesla-a100
       restartPolicy: OnFailure
       tolerations:
       - key: "nvidia.com/gpu"
@@ -111,4 +110,4 @@ spec:
       - key: "on-demand"
         value: "true"
         operator: "Equal"
-        effect: "NoSchedule"        
+        effect: "NoSchedule"
