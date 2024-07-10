@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PodTemplate
 metadata:
-  name: kh-a3-job
+  name: a3-job-J_ID
   namespace: ml-team
 template:
   spec:
@@ -10,19 +10,11 @@ template:
     tolerations:
     - key: "nvidia.com/gpu"
       operator: "Exists"
-      effect: "NoSchedule"
-    - key: "ondemand"
-      value: "true"
-      operator: "Equal"
-      effect: "NoSchedule"      
+      effect: "NoSchedule"  
     - key: "on-demand"
       value: "true"
       operator: "Equal"
-      effect: "NoSchedule"      
-    - key: "cloud.google.com/gke-queued"
-      value: "true"
-      operator: "Equal"
-      effect: "NoSchedule"      
+      effect: "NoSchedule"    
     containers:
     - name: pi
       image: perl
@@ -30,16 +22,16 @@ template:
       resources:
         limits:
           cpu: "700m"
-          nvidia.com/gpu: 2
+          nvidia.com/gpu: 8
         requests:
           cpu: "700m"
-          nvidia.com/gpu: 2
+          nvidia.com/gpu: 8
     restartPolicy: Never
 ---
 apiVersion: autoscaling.x-k8s.io/v1beta1
 kind: ProvisioningRequest
 metadata:
-  name: kh-a3-job
+  name: a3-job-J_ID
   namespace: ml-team
 spec:
   provisioningClassName: queued-provisioning.gke.io
@@ -48,4 +40,4 @@ spec:
   podSets:
   - count: 1
     podTemplateRef:
-      name: kh-a3-job
+      name: a3-job-J_ID

@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: kh-headless-svc
+  name: headless-svc-J_ID
 spec:
   clusterIP: None # clusterIP must be None to create a headless service
   selector:
-    job-name: kh-finetune-gemma2-9b-it-job # must match Job name
+    job-name: finetune-gemma-J_ID # must match Job name
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: kh-finetune-gemma2-9b-it-job
+  name: finetune-gemma-J_ID
   namespace: ml-team  
 spec:
   backoffLimit: 20
@@ -24,16 +24,16 @@ spec:
       annotations:
         gke-gcsfuse/volumes: "true"
         gke-gcsfuse/memory-limit: "35Gi"
-        cluster-autoscaler.kubernetes.io/consume-provisioning-request: kh-a2-job
+        cluster-autoscaler.kubernetes.io/consume-provisioning-request: a2-job-J_ID
         cluster-autoscaler.kubernetes.io/provisioning-class-name: "queued-provisioning.gke.io"
     spec:
-      subdomain: kh-headless-svc
+      subdomain: headless-svc-J_ID
       serviceAccountName: ray-worker
       terminationGracePeriodSeconds: 600
       containers:
       - name: gpu-job
         imagePullPolicy: Always 
-        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:v0.5.0
+        image: IMAGE_URL
         ports:
         - containerPort: 29500
         securityContext:
@@ -43,8 +43,6 @@ spec:
             nvidia.com/gpu: "2"
           limits:
             nvidia.com/gpu: "2"
-        # command: ["sleep", "infinity"]
-        # command: ["python", "/workspace/fine_tune.py"]
         command:
           - bash
           - -c
@@ -52,7 +50,7 @@ spec:
             accelerate launch \
             --config_file fsdp_config.yaml \
             --debug \
-            --main_process_ip kh-finetune-gemma2-9b-it-job-0.kh-headless-svc \
+            --main_process_ip finetune-gemma-J_ID-0.headless-svc-J_ID \
             --main_process_port 29500 \
             --machine_rank ${JOB_COMPLETION_INDEX} \
             --num_processes 2 \
@@ -60,7 +58,7 @@ spec:
             fine_tune.py
         env:
         - name: "EXPERIMENT"
-          value: "gemma-2"
+          value: "gemma2-a2"
         - name: "MLFLOW_ENABLE"
           value: "true"
         - name: "MLFLOW_TRACKING_URI"
@@ -76,7 +74,7 @@ spec:
         - name: NEW_MODEL
           value: "gemma-ft"
         - name: MODEL_PATH
-          value: "/model-data/model-gemma2-9b"
+          value: "/model-data/gemma2-a2/a2-J_ID"
         - name: EPOCHS
           value: "1"
         - name: NCCL_DEBUG
@@ -104,14 +102,12 @@ spec:
             mountOptions: "implicit-dirs"
       nodeSelector:
         cloud.google.com/gke-accelerator: nvidia-tesla-a100
-        resource-type: gpu-a2
-        pool-type: a2-2
       restartPolicy: OnFailure
       tolerations:
       - key: "nvidia.com/gpu"
         operator: "Exists"
         effect: "NoSchedule"
-      - key: "ondemand"
+      - key: "on-demand"
         value: "true"
         operator: "Equal"
         effect: "NoSchedule"
