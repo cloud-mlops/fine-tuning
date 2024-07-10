@@ -4,7 +4,7 @@ steps:
   args: 
   - -c 
   - |
-    gcloud container fleet memberships get-credentials mlp-kenthua
+    gcloud container fleet memberships get-credentials ${_CLUSTER_NAME}
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
   entrypoint: "bash"
   args:

@@ -28,7 +28,7 @@ gcloud builds triggers create pubsub \
     --build-config=finetune-gemma/cloudbuild-deploy.yaml \
     --repository="projects/gkebatchexpce3c8dcb/locations/us-central1/connections/cloudml-ops/repositories/cloud-mlops-fine-tuning" \
     --branch="main" \
-    --substitutions='_IMAGE_TAG=$(body.message.data.tag)','_ACTION=$(body.message.data.action)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a2' \
+    --substitutions='_IMAGE_TAG=$(body.message.data.tag)','_ACTION=$(body.message.data.action)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a2','_CLUSTER_NAME=mlp-kenthua' \
     --subscription-filter='_IMAGE_TAG.matches("(us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune)(?::.+)?") && _ACTION.matches("INSERT")' \
     --service-account="projects/gkebatchexpce3c8dcb/serviceAccounts/deploy-gke-sa@gkebatchexpce3c8dcb.iam.gserviceaccount.com"
 ```

@@ -38,19 +38,20 @@ gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
 
 - Modify the `image`, `nodeSelector`, `tolerations` accordingly.
 
-- L4 - On Demand
+- L4 - DWS
 ```
-kubectl apply -f yaml/kh-fine-tune-l4.yaml -n ml-team
+kubectl apply -f yaml/provisioning-request-l4.yaml -n ml-team
+kubectl apply -f yaml/fine-tune-l4.yaml -n ml-team
 ```
 
 - A100 - DWS
 ```
-kubectl apply -f yaml/kh-provisioningrequest-a2.yaml -n ml-team
-kubectl apply -f yaml/kh-fine-tune-a2.yaml -n ml-team
+kubectl apply -f yaml/provisioning-request-a2.yaml -n ml-team
+kubectl apply -f yaml/fine-tune-a2.yaml -n ml-team
 ```
 
-- H100 - DWS (MLP example)
+- H100 - DWS
 ```
-kubectl apply -f yaml/kh-provisioningrequest-a3.yaml -n ml-team
-kubectl apply -f yaml/kh-fine-tune-a3.yaml -n ml-team
+kubectl apply -f yaml/provisioning-request-a3.yaml -n ml-team
+kubectl apply -f yaml/fine-tune-a3.yaml -n ml-team
 ```
