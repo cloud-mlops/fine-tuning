@@ -2,11 +2,19 @@
 - Deploy ML Platform
 - Environment variables
 ```
-PROJECT_NUMBER=348087736605
-PROJECT_ID=gkebatchexpce3c8dcb
-BUCKET=kh-test-data
-NAMESPACE=ml-team
-KSA=ray-worker
+export PROJECT_NUMBER=348087736605
+export PROJECT_ID=gkebatchexpce3c8dcb
+export BUCKET=kh-test-data
+export NAMESPACE=ml-team
+export KSA=ray-worker
+export HF_TOKEN=<your token>
+```
+
+- Create secret for HF in your namespace
+```
+kubectl create secret generic hf-secret \
+  --from-literal=hf_api_token=${HF_TOKEN} \
+  --dry-run=client -o yaml | kubectl apply -n ml-team -f -
 ```
 
 # Image Build
