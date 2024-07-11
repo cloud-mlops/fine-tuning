@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
       - name: job
-        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/dataprep:v0.1.0
+        image: IMAGE_URL
         imagePullPolicy: Always
         env:
         - name: "BUCKET"
@@ -21,9 +21,7 @@ spec:
           requests:
             cpu: "7"
             memory: "25Gi"
-            # ephemeral-storage: "25Gi"
           limits:
             cpu: "7"
             memory: "25Gi"
-            # ephemeral-storage: "25Gi"
       restartPolicy: Never

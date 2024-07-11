@@ -1,0 +1,24 @@
+steps:
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  entrypoint: "bash"
+  args: 
+  - -c 
+  - |
+    gcloud container fleet memberships get-credentials ${_CLUSTER_NAME}
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  entrypoint: "bash"
+  args:
+  - -c
+  - |
+    sed -i -e "s|IMAGE_URL|${_IMAGE_TAG}|" dataprep.yaml
+  dir: "dataprep"
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  entrypoint: "bash"
+  args: 
+  - -c
+  - |
+    kubectl apply -f -n ml-team dataprep.yaml
+  dir: "dataprep"
+options:
+  logging: CLOUD_LOGGING_ONLY
+  dynamicSubstitutions: true
