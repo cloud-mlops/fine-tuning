@@ -11,10 +11,10 @@ from datasets import Dataset
 import os
 
 PROJECT_ID = os.getenv('PROJECT_ID', 'gkebatchexpce3c8dcb')
-FINETUNE_DS_BUCKET = os.getenv('FINETUNE_DS_BUCKET', 'kh-finetune-ds/auto/dataset-it') # The bucket which contains the preprocessed data
 REGION = os.getenv('REGION', 'us-central1')
-PREPROCESSED_DATA_PATH = os.getenv('PREPROCESSED_DATA_PATH','gs://gkebatchexpce3c8dcb-dev-processing/flipkart_preprocessed_dataset/flipkart.csv')
-
+PREPROCESSED_DATA_PATH = os.getenv('PREPROCESSED_DATA_PATH',
+                                   'gs://gkebatchexpce3c8dcb-dev-processing/flipkart_preprocessed_dataset/flipkart.csv')
+FINETUNE_DS_BUCKET = os.getenv('FINETUNE_DS_BUCKET', 'kh-finetune-ds/auto/dataset-it') # To store finetune dataset
 MODEL_ID="gemini-1.5-flash-001"
 
 generation_config = {
@@ -93,7 +93,7 @@ def prep_context():
                                  'Description']
 
     finetune_ds['c1_name'] = context_df['c1_name']
-    return finetune_ds
+    return finetune_ds[:2]
 
 def extract_product_details(text):
     output_string = ""  # Initialize empty string
@@ -142,12 +142,10 @@ def generate_qa(context, category):
 
         # Extract questions and answers
         #matches = re.findall(pattern, qa, re.DOTALL)
-        #print(matches)
 
         # Create a DataFrame
         temp_df = pd.DataFrame(columns=["Question", "Answer", "Context"])
         qa_list = qa.split(";")
-        print(len(qa_list))
         # Create a list to hold the data
         new_data = []
 
@@ -155,7 +153,6 @@ def generate_qa(context, category):
             q_a = qa_item.split(":")
             if len(q_a) == 2:
                 ans = q_a[1].strip() + ' \n ' + extract_product_details(context)
-                print(ans)
                 new_data.append([q_a[0].strip(), ans, f"Online shopping for {category}"])  # Append as a list
 
         # Create the DataFrame after collecting all data
@@ -175,11 +172,9 @@ def data_prep(finetune_ds):
     result = pd.DataFrame()
     for context, category in zip(finetune_ds['context'],finetune_ds['c1_name']):
         if context!=np.nan:
-            print(context)
             temp_df = generate_qa(context, category)
             if temp_df is not None:
                 result = pd.concat([result, temp_df], ignore_index=True)
-                print(result.shape)
             time.sleep(1) # Add a 1second delay to avoid API rate limiting (adjust as needed)
     # Now `result` contains all generated questions and answers
     return result
