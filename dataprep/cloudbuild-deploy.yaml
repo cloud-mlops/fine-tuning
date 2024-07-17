@@ -11,6 +11,12 @@ steps:
   - -c
   - |
     sed -i -e "s|IMAGE_URL|${_IMAGE_TAG}|" dataprep.yaml
+    sed -i -e "s|J_ID|${_IMAGE_VERSION}|g" dataprep.yaml
+    sed -i -e "s|V_PROJECT_ID|${PROJECT_ID}|" dataprep.yaml
+    sed -i -e "s|V_BUCKET|${_BUCKET}|" dataprep.yaml
+    sed -i -e "s|V_DATASET_INPUT_PATH|${_DATASET_INPUT_PATH}|" dataprep.yaml
+    sed -i -e "s|V_PROMPT_MODEL_ID|${_PROMPT_MODEL_ID}|" dataprep.yaml
+    sed -i -e "s|V_VERTEX_REGION|${_VERTEX_REGION}|" dataprep.yaml
   dir: "dataprep"
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
   entrypoint: "bash"

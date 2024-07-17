@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dataprep-job
+  name: dataprep-job-J_ID
 spec:
   template:
     metadata:
@@ -14,9 +14,17 @@ spec:
         imagePullPolicy: Always
         env:
         - name: "BUCKET"
-          value: "kh-finetune-ds"
+          value: "V_BUCKET"
+        - name: "DATASET_INPUT_PATH"
+          value: "V_DATASET_INPUT_PATH"
+        - name: "DATASET_OUTPUT_PATH"
+          value: "output-J_ID"
         - name: "PROJECT_ID"
-          value: "gkebatchexpce3c8dcb"
+          value: "V_PROJECT_ID"
+        - name: "PROMPT_MODEL_ID"
+          value: "V_PROMPT_MODEL_ID"
+        - name: "VERTEX_REGION"
+          value: "V_VERTEX_REGION"
         resources:
           requests:
             cpu: "7"
