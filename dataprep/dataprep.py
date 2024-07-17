@@ -93,7 +93,7 @@ def prep_context():
                                  'Description']
 
     finetune_ds['c1_name'] = context_df['c1_name']
-    return finetune_ds[:2]
+    return finetune_ds
 
 def extract_product_details(text):
     output_string = ""  # Initialize empty string
