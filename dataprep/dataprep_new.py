@@ -1,10 +1,19 @@
 import pandas as pd
 import vertexai
-from vertexai.generative_models import GenerativeModel, Part, FinishReason
 import vertexai.preview.generative_models as generative_models
+from vertexai.preview.generative_models import GenerativeModel
 import re
 import time
 import numpy as np
+import json
+from datasets import DatasetDict
+from datasets import Dataset
+import os
+
+PROJECT_ID = os.getenv('PROJECT', 'gkebatchexpce3c8dcb')
+FINETUNE_DS_BUCKET = os.getenv('FINETUNE_DS_BUCKET', 'kh-finetune-ds/auto/dataset-it') # The bucket which contains the preprocessed data
+REGION = os.getenv('REGION', 'us-central1')
+MODEL_ID="gemini-1.5-flash-001"
 
 generation_config = {
     "max_output_tokens": 200,
@@ -20,10 +29,9 @@ safety_settings = {
 
 num_questions = 3
 
-vertexai.init(project="cloud-llm-preview1", location="us-central1")
-model = GenerativeModel(
-"gemini-1.5-flash-preview-0514",
-)
+vertexai.init(project=PROJECT_ID, location=REGION)
+model = GenerativeModel(MODEL_ID)
+
 
 def filter_low_value_count_rows(df, column_name, min_count=10):
     """
@@ -81,51 +89,127 @@ def prep_context():
         'c1_name'] + "<br> Attributes: " + context_df['Specifications'] + " <br> Description: " + context_df[
                                  'Description']
 
+    finetune_ds['c1_name'] = context_df['c1_name']
     return finetune_ds
 
+def extract_product_details(text):
+    output_string = ""  # Initialize empty string
 
-def generate(context, category):
-  prompt = f"Generate {num_questions} Search Queries in conversational tone and Answers for this product:\n{context}. Return the result without any formatting in a single line as Question : Answer"
-  try:
-    responses = model.generate_content(
-        [prompt],
-        generation_config=generation_config,
-        safety_settings=safety_settings,
-        stream=True,
-    )
-    qa=''
-    for response in responses:
-      qa+=response.text
-    #print (qa)
+    # Extract content before "Description:"
+    match = re.search(r"(.*?)Description:", text, re.DOTALL)
+    if match:
+        content_before_description = match.group(1)
 
-    # Define the pattern to match questions and answers
-    pattern = r"Question : (.*?) : Answer : (.*?)(?=\nQuestion :|$)"  # $ for end of string
+        # Remove <br> tags and "Product Category:" line
+        cleaned_content = content_before_description.replace("<br>", "\n")
+        lines = [line.strip() for line in cleaned_content.splitlines() if line.strip() and not line.startswith("Product Category:")]
 
-    # Extract questions and answers
-    matches = re.findall(pattern, qa, re.DOTALL)
-    #print(matches)
+        # Extract and parse attributes
+        match_attributes = re.search(r"Attributes:\s*(\{.*?\})", cleaned_content, re.DOTALL)
+        if match_attributes:
+            attributes_str = match_attributes.group(1)
+            attributes = json.loads(attributes_str)
 
-    # Create a DataFrame
-    temp_df = pd.DataFrame(matches, columns=["Question", "Answer"])
-    temp_df['Context'] = context
-    temp_df['Category'] = category
-    return temp_df
-  except Exception as e:
-    print(e)
-    return None
+            # Append formatted output to output_string
+            for line in lines:
+                if not line.startswith("Attributes:"):
+                    output_string += line + "\n"
+            output_string += "Product Details:\n"
+            for key, value in attributes.items():
+                output_string += f"- {key}: {value}\n"
+
+    return output_string  # Return the final string
+
+def generate_qa(context, category):
+    prompt = f"Generate {num_questions} Search Queries in conversational tone and Answers for this product:\n{context}. Return the result without any formatting in a single line as Question : Answer ;"
+    try:
+        responses = model.generate_content(
+            [prompt],
+            generation_config=generation_config,
+            safety_settings=safety_settings,
+            stream=True,
+        )
+        qa=''
+        for response in responses:
+            qa+=response.text
+        #print (qa)
+
+        # Define the pattern to match questions and answers
+        #pattern = r"Question : (.*?) : Answer : (.*?)(?=\nQuestion :|$)"  # $ for end of string
+
+        # Extract questions and answers
+        #matches = re.findall(pattern, qa, re.DOTALL)
+        #print(matches)
+
+        # Create a DataFrame
+        temp_df = pd.DataFrame(columns=["Question", "Answer", "Context"])
+        qa_list = qa.split(";")
+        print(len(qa_list))
+        # Create a list to hold the data
+        new_data = []
+
+        for qa_item in qa_list:  # Iterate over the QA items
+            q_a = qa_item.split(":")
+            if len(q_a) == 2:
+                ans = q_a[1].strip() + ' \n ' + extract_product_details(context)
+                print(ans)
+                new_data.append([q_a[0].strip(), ans, f"Online shopping for {category}"])  # Append as a list
+
+        # Create the DataFrame after collecting all data
+        temp_df = pd.DataFrame(new_data, columns=temp_df.columns)
+        return temp_df
+    except Exception as e:
+        print(e)
+        return None
+
+def generate_prompt(row):
+    context = row['Context']
+    input_text = row['Question']
+    output_text = row['Answer']
+    return f"<start_of_turn>user\n Context:{context}\n{input_text}<end_of_turn> <start_of_turn>model\n{output_text}<end_of_turn>"
 
 def data_prep(finetune_ds):
     result = pd.DataFrame()
-    for (context, category) in finetune_ds[['context','c1_name']]:
-      if context!=np.nan:
-        temp_df = generate(context, category)
-        if not temp_df is None:
-          result = pd.concat([result, temp_df], ignore_index=True)
-        time.sleep(1) # Add a 1 second delay to avoid API rate limiting (adjust as needed)
-
+    for context, category in zip(finetune_ds['context'],finetune_ds['c1_name']):
+        if context!=np.nan:
+            print(context)
+            temp_df = generate_qa(context, category)
+            if temp_df is not None:
+                result = pd.concat([result, temp_df], ignore_index=True)
+                print(result.shape)
+            time.sleep(1) # Add a 1second delay to avoid API rate limiting (adjust as needed)
     # Now `result` contains all generated questions and answers
-    print(result)
+    return result
+
+def train_validate_test_split(df):
+    print("Total Data Size:", len(df))
+    train_size = int(0.8 * len(df))
+    val_size = int(0.1 * len(df))
+    train_df = df.sample(n=train_size, random_state=42)
+    remaining_df = df.drop(train_df.index)
+    val_df = remaining_df.sample(n=val_size, random_state=42)
+    test_df = remaining_df.drop(val_df.index)
+    print("Training data size:", len(train_df), "\n", "Validation data size:", len(val_df), "\n", "Test data size:", len(test_df))
+    # Create DatasetDict with splits
+    dataset = DatasetDict({
+        'train': Dataset.from_pandas(train_df),
+        'validation': Dataset.from_pandas(val_df),
+        'test': Dataset.from_pandas(test_df)
+    })
+    dataset['train'].save_to_disk('gs://' + FINETUNE_DS_BUCKET + '/training/')
+    dataset['validation'].save_to_disk('gs://' + FINETUNE_DS_BUCKET + '/validation/')
+    dataset['test'].save_to_disk('gs://' + FINETUNE_DS_BUCKET + '/test/')
 
 if __name__ == '__main__':
+
+    # Prepare context for Gemini Flash's prompt
     df = prep_context()
-    data_prep(df)
+
+    # Generate Q & A according
+    res_df = data_prep(df)
+
+    # Generate Prompts for Gemma IT model
+    res_df['prompt'] = res_df.apply(generate_prompt, axis=1)
+
+    # Upload prepared dataset into GCS
+    train_validate_test_split(res_df)
