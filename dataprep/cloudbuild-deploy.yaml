@@ -15,6 +15,7 @@ steps:
     sed -i -e "s|V_PROJECT_ID|${PROJECT_ID}|" dataprep.yaml
     sed -i -e "s|V_BUCKET|${_BUCKET}|" dataprep.yaml
     sed -i -e "s|V_DATASET_INPUT_PATH|${_DATASET_INPUT_PATH}|" dataprep.yaml
+    sed -i -e "s|V_DATASET_INPUT_FILE|${_DATASET_INPUT_FILE}|" dataprep.yaml
     sed -i -e "s|V_PROMPT_MODEL_ID|${_PROMPT_MODEL_ID}|" dataprep.yaml
     sed -i -e "s|V_VERTEX_REGION|${_VERTEX_REGION}|" dataprep.yaml
   dir: "dataprep"
@@ -23,7 +24,7 @@ steps:
   args: 
   - -c
   - |
-    kubectl apply -f -n ml-team dataprep.yaml
+    kubectl apply -n ml-team -f dataprep.yaml
   dir: "dataprep"
 options:
   logging: CLOUD_LOGGING_ONLY

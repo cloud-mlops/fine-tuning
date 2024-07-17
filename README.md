@@ -81,7 +81,7 @@ gcloud builds triggers create pubsub \
     --build-config=dataprep/cloudbuild-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_IMAGE_TAG=$(body.message.data.tag)','_ACTION=$(body.message.data.action)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_CLUSTER_NAME=mlp-kenthua','_BUCKET=kh-finetune-ds','_DATASET_INPUT_PATH=flipkart_preprocessed_dataset/flipkart.csv','_PROMPT_MODEL_ID=gemini-1.5-flash-001','_VERTEX_REGION=us-central1' \
+    --substitutions='_IMAGE_TAG=$(body.message.data.tag)','_ACTION=$(body.message.data.action)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_CLUSTER_NAME=mlp-kenthua','_BUCKET=kh-finetune-ds','_DATASET_INPUT_PATH=flipkart_preprocessed_dataset','_DATASET_INPUT_FILE=flipkart.csv','_PROMPT_MODEL_ID=gemini-1.5-flash-001','_VERTEX_REGION=us-central1' \
     --subscription-filter='_IMAGE_TAG.matches("(us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/dataprep)(?::.+)?") && _ACTION.matches("INSERT")' \
     --service-account="projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 ```

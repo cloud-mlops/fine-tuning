@@ -5,10 +5,7 @@ vertexai==1.49.0
 ## lowered version
 protobuf==4.24.4
 ## added manually
-#google-cloud-storage==2.16.0
 google-cloud-storage==2.17.0
 google-cloud-aiplatform==1.49.0
-#openpyxl==3.1.3
-openpyxl==3.1.4
-#gcsfs==2023.12.0
-gcsfs==2024.6.0
+gcsfs==2024.5.0
+datasets==2.20.0

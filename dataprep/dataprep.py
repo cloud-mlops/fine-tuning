@@ -11,11 +11,12 @@ from datasets import Dataset
 import os
 
 PROJECT_ID = os.getenv('PROJECT_ID', 'gkebatchexpce3c8dcb')
+BUCKET = os.getenv('BUCKET', 'kh-finetune-ds') # The bucket which contains the preprocessed data
 REGION = os.getenv('REGION', 'us-central1')
-PREPROCESSED_DATA_PATH = os.getenv('PREPROCESSED_DATA_PATH',
-                                   'gs://gkebatchexpce3c8dcb-dev-processing/flipkart_preprocessed_dataset/flipkart.csv')
-FINETUNE_DS_BUCKET = os.getenv('FINETUNE_DS_BUCKET', 'kh-finetune-ds/auto/dataset-it') # To store finetune dataset
-MODEL_ID="gemini-1.5-flash-001"
+DATASET_INPUT = os.getenv("DATASET_INPUT_PATH", "flipkart_preprocessed_dataset")
+DATASET_INPUT_FILE = os.getenv("DATASET_INPUT_FILE", "flipkart.csv")
+DATASET_OUTPUT = os.getenv("DATASET_OUTPUT_PATH", "output")
+MODEL_ID = os.getenv("PROMPT_MODEL_ID", "gemini-1.5-flash-001")
 
 generation_config = {
     "max_output_tokens": 200,
@@ -62,7 +63,7 @@ def filter_low_value_count_rows(df, column_name, min_count=10):
 
 def prep_context():
 
-    preprocessed = pd.read_csv(PREPROCESSED_DATA_PATH)
+    preprocessed = pd.read_csv(f"gs://{BUCKET}/{DATASET_INPUT}/{DATASET_INPUT_FILE}")
     # renaming column name
     preprocessed.rename(columns={'uniq_id': 'Id', 'product_name': 'Name', 'description': 'Description', 'brand': 'Brand',
                           'attributes': 'Specifications'}, inplace=True)
@@ -194,9 +195,9 @@ def train_validate_test_split(df):
         'validation': Dataset.from_pandas(val_df),
         'test': Dataset.from_pandas(test_df)
     })
-    dataset['train'].save_to_disk('gs://' + FINETUNE_DS_BUCKET + '/training/')
-    dataset['validation'].save_to_disk('gs://' + FINETUNE_DS_BUCKET + '/validation/')
-    dataset['test'].save_to_disk('gs://' + FINETUNE_DS_BUCKET + '/test/')
+    dataset['train'].save_to_disk(f"gs://{BUCKET}/{DATASET_OUTPUT}/training/")
+    dataset['validation'].save_to_disk(f"gs://{BUCKET}/{DATASET_OUTPUT}/validation/")
+    dataset['test'].save_to_disk(f"gs://{BUCKET}/{DATASET_OUTPUT}/test/")
 
 if __name__ == '__main__':
 

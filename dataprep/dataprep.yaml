@@ -8,6 +8,7 @@ spec:
       labels:
         app: dataprep-job
     spec:
+      serviceAccountName: ray-worker
       containers:
       - name: job
         image: IMAGE_URL
@@ -17,6 +18,8 @@ spec:
           value: "V_BUCKET"
         - name: "DATASET_INPUT_PATH"
           value: "V_DATASET_INPUT_PATH"
+        - name: "DATASET_INPUT_FILE"
+          value: "V_DATASET_INPUT_FILE"
         - name: "DATASET_OUTPUT_PATH"
           value: "output-J_ID"
         - name: "PROJECT_ID"
