@@ -10,10 +10,10 @@ steps:
   args:
   - -c
   - |
-    sed -i -e "s|J_ID|${_IMAGE_VERSION}|g" yaml/provisioning-request-${_ACCELERATOR}.yaml
-    sed -i -e "s|J_ID|${_IMAGE_VERSION}|g" \
+    sed -i -e "s|J_ID|${_DATA_COMMIT}|g" yaml/provisioning-request-${_ACCELERATOR}.yaml
+    sed -i -e "s|J_ID|${_DATA_COMMIT}|g" \
       -i -e "s|IMAGE_URL|${_IMAGE_TAG}|" \
-      -i -e "s|V_TRAINING_DATASET_PATH|${_TRAINING_DATASET_PATH}|g"
+      -i -e "s|V_TRAINING_DATASET_PATH|/${_TRAINING_DATASET_PATH}|g" \
       yaml/fine-tune-${_ACCELERATOR}-dws.yaml
   dir: "finetune-gemma"
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"

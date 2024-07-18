@@ -68,13 +68,14 @@ spec:
         - name: "TRAINING_DATASET_BUCKET"
           value: "kh-finetune-ds"
         - name: "TRAINING_DATASET_PATH"
-          value: "/new-format/dataset-it/training"
+          value: "V_TRAINING_DATASET_PATH"
+          #value: "/new-format/dataset-it/training"
         - name: MODEL_NAME
           value: "google/gemma-2-9b-it"
         - name: NEW_MODEL
           value: "gemma-ft"
         - name: MODEL_PATH
-          value: "/model-data/gemma2-l4/l4-2-J_ID"
+          value: "/model-data/model-gemma2-a100/experiment-J_ID"
         - name: EPOCHS
           value: "1"
         - name: HF_TOKEN

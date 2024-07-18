@@ -28,7 +28,6 @@ gcloud builds triggers create github \
     --substitutions='_VERSION=$SHORT_SHA'
 ```
 
-
 # Create build triggers finetune
 ```
 gcloud builds triggers create github \
@@ -38,6 +37,18 @@ gcloud builds triggers create github \
     --branch-pattern="^main$" \
     --build-config="finetune-gemma/cloudbuild.yaml" \
     --included-files="finetune-gemma/fine_tune.py,finetune-gemma/requirements.txt" \
+    --substitutions='_VERSION=$SHORT_SHA'
+```
+
+# Create build triggers model-eval
+```
+gcloud builds triggers create github \
+    --name=build-model-eval-image \
+    --region=${REGION} \
+    --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
+    --branch-pattern="^main$" \
+    --build-config="model-eval/cloudbuild.yaml" \
+    --included-files="model-eval/validate_fine_tuned_model.py,model-eval/requirements.txt" \
     --substitutions='_VERSION=$SHORT_SHA'
 ```
 
@@ -70,6 +81,11 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --member=serviceAccount:${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com \
     --role=roles/logging.logWriter \
     --condition=None
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+    --member=serviceAccount:${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com \
+    --role=roles/storage.objectUser \
+    --condition=None
 ```
 
 - Create the Pub/Sub trigger to deploy dataprep
@@ -95,7 +111,7 @@ gcloud builds triggers create pubsub \
     --build-config=finetune-gemma/cloudbuild-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_IMAGE_TAG=$(body.message.data.tag)','_ACTION=$(body.message.data.action)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua' \
+    --substitutions='_IMAGE_TAG=$(body.message.data.tag)','_ACTION=$(body.message.data.action)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=/new-format/dataset-it/training' \
     --subscription-filter='_IMAGE_TAG.matches("(us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune)(?::.+)?") && _ACTION.matches("INSERT")' \
     --service-account="projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 ```
@@ -110,8 +126,9 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --condition=None
 ```
 
-- Create the GCS Pub/Sub topic
+- Create the GCS Pub/Sub topic to trigger fine tuning
 ```
+BUCKET=kh-finetune-ds
 TOPIC=${BUCKET}-topic
 gcloud storage buckets notifications create gs://${BUCKET} --topic=${TOPIC}
 ```
@@ -119,12 +136,32 @@ gcloud storage buckets notifications create gs://${BUCKET} --topic=${TOPIC}
 - Create the trigger for new data in GCS
 ```
 gcloud builds triggers create pubsub \
-    --name=trigger-deploy-findtune-job-new-data-1 \
+    --name=trigger-deploy-finetune-job-new-data \
     --region=${REGION} \
     --topic=projects/${PROJECT_ID}/topics/${TOPIC} \
-    --build-config=finetune-gemma/cloudbuild-deploy-new-data.yaml \
+    --build-config=finetune-gemma/cloudbuild-gcs-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_EVENT_TYPE="$(body.message.attributes.eventType)"','_BUCKET_ID="$(body.message.attributes.bucketId)"','_OBJECT_ID="$(body.message.attributes.objectId)"','_IMAGE_TAG=$(body.message.data.tag)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua' \
-    --subscription-filter='_EVENT_TYPE == "OBJECT_FINALIZE" && _OBJECT_ID.matches("training/state.json") && _BUCKET_ID.matches("${BUCKET}")'
+    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:abctest','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=${_OBJECT_ID/\/state.json/}','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}' \
+    --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("^(.*)training/state.json$") && _BUCKET_ID.matches("^kh-finetune-ds$")'
+```
+
+- Create the GCS Pub/Sub topic to trigger model eval
+```
+BUCKET=kr-finetune
+TOPIC=${BUCKET}-topic
+gcloud storage buckets notifications create gs://${BUCKET} --topic=${TOPIC}
+```
+
+- Create the trigger for new data in GCS
+```
+gcloud builds triggers create pubsub \
+    --name=trigger-deploy-model-eval-new-data \
+    --region=${REGION} \
+    --topic=projects/${PROJECT_ID}/topics/${TOPIC} \
+    --build-config=model-eval/cloudbuild-gcs-deploy.yaml \
+    --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
+    --branch="main" \
+    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_EVAL_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:b83710d','_VLLM_IMAGE_TAG=vllm/vllm-openai:v0.5.2','_CLUSTER_NAME=mlp-kenthua','_MODEL_PATH=${_OBJECT_ID/\/tokenizer_config.json/}','_DATASET_BUCKET=kh-finetune-ds','_DATA_COMMIT=${_MODEL_PATH##*-}' \
+    --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("(model-.*/experiment-.*/tokenizer_config.json)$") && _BUCKET_ID.matches("^kr-finetune$")'
 ```

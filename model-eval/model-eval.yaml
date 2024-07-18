@@ -1,27 +1,35 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: dataprep-job-J_ID
+  name: model-eval-J_ID
 spec:
+  backoffLimit: 10
   template:
     metadata:
       labels:
-        app: dataprep-job
+        app: model-eval-job
     spec:
       serviceAccountName: ray-worker
       containers:
       - name: job
         image: IMAGE_URL
         imagePullPolicy: Always
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          ACTION=predict python validate_fine_tuned_model.py
+          ACTION=accuracy python validate_fine_tuned_model.py
         env:
+        - name: "ENDPOINT"
+          value: "V_ENDPOINT"
+        - name: "MODEL_PATH"
+          value: "V_MODEL_PATH"
+        - name: "DATASET_TAG"
+          value: "V_DATASET_TAG"
         - name: "BUCKET"
           value: "V_BUCKET"
-        - name: "DATASET_INPUT_PATH"
-          value: "V_DATASET_INPUT_PATH"
-        - name: "DATASET_INPUT_FILE"
-          value: "V_DATASET_INPUT_FILE"
-        - name: "DATASET_OUTPUT_PATH"
-          value: "dataset/output-J_ID"
+        ##
         - name: "PROJECT_ID"
           value: "V_PROJECT_ID"
         - name: "PROMPT_MODEL_ID"
@@ -30,9 +38,10 @@ spec:
           value: "V_VERTEX_REGION"
         resources:
           requests:
-            cpu: "7"
-            memory: "25Gi"
+            cpu: "2"
+            memory: "5Gi"
           limits:
-            cpu: "7"
-            memory: "25Gi"
+            cpu: "2"
+            memory: "5Gi"
       restartPolicy: Never
+

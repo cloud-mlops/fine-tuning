@@ -7,13 +7,14 @@ import os
 
 class ModelEvaluation:
     def __init__(self):  # Constructor
-        self.api_endpoint = os.getenv("ENDPOINT", "http://localhost:8002/v1/chat/completions")
-        self.model_name = os.getenv("MODEL_PATH", "/model-data/hyperparam-gemma2/model-job-2")
-        self.output_file = os.getenv("PREDICTIONS_FILE", "gemma2_job2_predictions.txt")
+        self.api_endpoint = os.getenv("ENDPOINT", "http://10.40.0.51:8000/v1/chat/completions")
+        self.model_name = os.getenv("MODEL_PATH", "/model-data/gemma2-a100/a100-abctest")
+        self.output_file = os.getenv("PREDICTIONS_FILE", "predictions.txt")
         self.gcs_bucket = os.getenv("BUCKET", 'kh-finetune-ds')
-        training_dataset = load_from_disk("gs://" + self.gcs_bucket + "/new-format/dataset-it/training")
-        validation_dataset = load_from_disk("gs://" + self.gcs_bucket + "/new-format/dataset-it/validation")
-        test_dataset = load_from_disk("gs://" + self.gcs_bucket + "/new-format/dataset-it/test")
+        self.dataset_tag = os.getenv("DATASET_TAG", "a2aa2c3")
+        training_dataset = load_from_disk(f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/training")
+        validation_dataset = load_from_disk(f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/validation")
+        test_dataset = load_from_disk(f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/test")
         # convert output to pandas dataframe
         self.training_df = training_dataset.to_pandas()
         self.validation_df = validation_dataset.to_pandas()
@@ -26,8 +27,7 @@ class ModelEvaluation:
         # Send the Request
         headers = {"Content-Type": "application/json"}
         for i in range(len(self.df)):
-            print("i", i)
-            user_message = self.df["Input"][i]
+            user_message = self.df["Question"][i]
             # Request Data
             request_data = {
                 "model": self.model_name,
@@ -37,6 +37,7 @@ class ModelEvaluation:
                 "top_p": 1.0,
                 "max_tokens": 256
             }
+            #print(f"API Endpoint {self.api_endpoint}")
             response = requests.post(self.api_endpoint, headers=headers, data=json.dumps(request_data))
 
             # Check for Successful Response
@@ -84,13 +85,13 @@ class ModelEvaluation:
         for product_name in product_names:
             if product_name:
                 # Option 1: Partial Match
-                partial_match = ground_truth[ground_truth['Output'].str.contains(product_name, case=False)]
+                partial_match = ground_truth[ground_truth['Answer'].str.contains(product_name, case=False)]
                 if not partial_match.empty:
                     print(f"Found partial matches for '{product_name}':")
                     true_positives_count += 1
                 else:
                     # Option 2: Full Match (if partial match not found)
-                    full_match = ground_truth[ground_truth['Output'] == product_name]
+                    full_match = ground_truth[ground_truth['Answer'] == product_name]
                     if not full_match.empty:
                         print(f"Found exact match for '{product_name}':")
                         true_positives_count += 1
@@ -101,7 +102,7 @@ class ModelEvaluation:
 
     # Calculate Accuracy on Validation Dataset
     def calculate_accuracy(self):
-        ground_truth = pd.DataFrame(self.training_df['Output'])
+        ground_truth = pd.DataFrame(self.training_df['Answer'])
         total_test_size = len(self.df)
         print("Test dataset size: ", total_test_size)
 
@@ -121,10 +122,13 @@ class ModelEvaluation:
             print(f"Precision of Gemma2 9B IT model on test dataset is ", precision, "%")
 
     def evaluate(self):
-        #self.predict()
-        self.calculate_accuracy()
+        if "ACTION" in os.environ and os.getenv("ACTION") == "predict":
+            self.predict()
+        else:
+            self.calculate_accuracy()
 
 
 if __name__ == "__main__":
     model_eval = ModelEvaluation()
     model_eval.evaluate()
+
