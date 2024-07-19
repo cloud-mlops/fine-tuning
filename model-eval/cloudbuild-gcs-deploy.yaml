@@ -1,15 +1,11 @@
 steps:
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-  entrypoint: "bash"
-  args: 
-  - -c 
-  - |
+  script: |
+    #!/usr/bin/env bash
     gcloud container fleet memberships get-credentials ${_CLUSTER_NAME}
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-  entrypoint: "bash"
-  args:
-  - -c
-  - |
+  script: |
+    #!/usr/bin/env bash
     sed -i -e "s|IMAGE_URL|${_VLLM_IMAGE_TAG}|" \
       -i -e "s|J_ID|${_DATA_COMMIT}|g" \
       -i -e "s|V_MODEL_PATH|/model-data/${_MODEL_PATH}|" \
@@ -17,10 +13,8 @@ steps:
       vllm-openai.yaml
   dir: "model-eval"
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-  entrypoint: "bash"
-  args:
-  - -c
-  - |
+  script: |
+    #!/usr/bin/env bash
     sed -i -e "s|IMAGE_URL|${_EVAL_IMAGE_TAG}|" \
       -i -e "s|J_ID|${_DATA_COMMIT}|g" \
       -i -e "s|V_ENDPOINT|http://vllm-openai-${_DATA_COMMIT}.ml-team:8000/v1/chat/completions|" \
@@ -30,10 +24,8 @@ steps:
       model-eval.yaml
   dir: "model-eval"
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-  entrypoint: "bash"
-  args: 
-  - -c
-  - |
+  script: |
+    #!/usr/bin/env bash
     kubectl apply -n ml-team -f vllm-openai.yaml
     kubectl wait deployment -n ml-team vllm-openai-${_DATA_COMMIT} --for condition=Available=True --timeout=600s
     echo "Checking for pod availability"
