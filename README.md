@@ -16,7 +16,8 @@ export REPOSITORY_CONNECTION_NAME=cloudml-ops
 export REPOSITORY=cloud-mlops-fine-tuning
 ```
 
-# Create build triggers dataprep
+# Create Cloud Build triggers to build docker images
+## For dataprep
 ```
 gcloud builds triggers create github \
     --name=build-dataprep-image \
@@ -28,7 +29,7 @@ gcloud builds triggers create github \
     --substitutions='_VERSION=$SHORT_SHA'
 ```
 
-# Create build triggers finetune
+## For finetune
 ```
 gcloud builds triggers create github \
     --name=build-finetune-image \
@@ -40,7 +41,7 @@ gcloud builds triggers create github \
     --substitutions='_VERSION=$SHORT_SHA'
 ```
 
-# Create build triggers model-eval
+## For model-eval
 ```
 gcloud builds triggers create github \
     --name=build-model-eval-image \
@@ -52,7 +53,7 @@ gcloud builds triggers create github \
     --substitutions='_VERSION=$SHORT_SHA'
 ```
 
-# Cloud Build Pub/Sub Artifact Registry Trigger To Provision Resources in Cluster
+# Cloud Build Pub/Sub Artifact Registry Trigger to provision resources in cluster
 - Create the topic for Artifact Registry to trigger on image addition
 ```
 gcloud pubsub topics create gcr --project=${PROJECT_ID}
@@ -88,7 +89,7 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --condition=None
 ```
 
-- Create the Pub/Sub trigger to deploy dataprep
+## Deploy dataprep
 ```
 gcloud builds triggers create pubsub \
     --name=trigger-deploy-dataprep-job \
@@ -102,7 +103,7 @@ gcloud builds triggers create pubsub \
     --service-account="projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 ```
 
-- Create the Pub/Sub trigger to deploy finetune
+## Deploy finetune
 ```
 gcloud builds triggers create pubsub \
     --name=trigger-deploy-finetune-job \
@@ -126,6 +127,7 @@ gcloud projects add-iam-policy-binding ${PROJECT_ID} \
     --condition=None
 ```
 
+## Create the trigger for new training dataset in GCS
 - Create the GCS Pub/Sub topic to trigger fine tuning
 ```
 BUCKET=kh-finetune-ds
@@ -133,7 +135,7 @@ TOPIC=${BUCKET}-topic
 gcloud storage buckets notifications create gs://${BUCKET} --topic=${TOPIC}
 ```
 
-- Create the trigger for new data in GCS
+- Create the trigger
 ```
 gcloud builds triggers create pubsub \
     --name=trigger-deploy-finetune-job-new-data \
@@ -146,6 +148,7 @@ gcloud builds triggers create pubsub \
     --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("^(.*)training/state.json$") && _BUCKET_ID.matches("^kh-finetune-ds$")'
 ```
 
+## Create the trigger for new fine-tuned model
 - Create the GCS Pub/Sub topic to trigger model eval
 ```
 BUCKET=kr-finetune
@@ -153,7 +156,7 @@ TOPIC=${BUCKET}-topic
 gcloud storage buckets notifications create gs://${BUCKET} --topic=${TOPIC}
 ```
 
-- Create the trigger for new data in GCS
+- Create the trigger
 ```
 gcloud builds triggers create pubsub \
     --name=trigger-deploy-model-eval-new-data \
