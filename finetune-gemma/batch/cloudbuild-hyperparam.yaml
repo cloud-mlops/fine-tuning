@@ -1,0 +1,22 @@
+steps:
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  entrypoint: "bash"
+  args: 
+  - -c 
+  - |
+    gcloud container fleet memberships get-credentials ${_CLUSTER_NAME}
+- name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+  args: ['./batch.sh']
+  env:
+  - DATA_COMMIT=${_DATA_COMMIT}
+  - IMAGE_URL=${_IMAGE_URL}
+  - EXPERIMENT=${_EXPERIMENT}
+  - MODEL_BUCKET=${_MODEL_BUCKET}
+  - MODEL_NAME=${_MODEL_NAME}
+  - MODEL_PATH=${_MODEL_PATH}
+  - TRAINING_DATASET_BUCKET=${_TRAINING_DATASET_BUCKET}
+  - TRAINING_DATASET_PATH=${_TRAINING_DATASET_PATH}
+  dir: "finetune-gemma/batch"
+options:
+  logging: CLOUD_LOGGING_ONLY
+  dynamicSubstitutions: true

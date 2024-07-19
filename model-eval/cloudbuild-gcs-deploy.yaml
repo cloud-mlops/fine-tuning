@@ -21,11 +21,12 @@ steps:
   args:
   - -c
   - |
+    # If we are doing hyperparam tuning, it will append itN to the commit, remove the suffix because we need the dataset id by itself
     sed -i -e "s|IMAGE_URL|${_EVAL_IMAGE_TAG}|" \
       -i -e "s|J_ID|${_DATA_COMMIT}|g" \
       -i -e "s|V_ENDPOINT|http://vllm-openai-${_DATA_COMMIT}.ml-team:8000/v1/chat/completions|" \
       -i -e "s|V_MODEL_PATH|/model-data/${_MODEL_PATH}|" \
-      -i -e "s|V_DATASET_TAG|${_DATA_COMMIT}|" \
+      -i -e "s|V_DATASET_TAG|$(sed -r 's/it[0-9]+//g' <<< ${_DATA_COMMIT})|" \
       -i -e "s|V_BUCKET|${_DATASET_BUCKET}|" \
       model-eval.yaml
   dir: "model-eval"

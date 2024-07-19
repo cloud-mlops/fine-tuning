@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: ft-gemma2-job-J_IT
+  name: finetune-gemma-J_ID
   namespace: ml-team  
 spec:
   backoffLimit: 20
@@ -12,12 +12,12 @@ spec:
     metadata:
       labels:
         app: finetune-job
-        job-track-id: ft-gemma2-job-J_IT
+        job-track-id: finetune-gemma-J_ID
       annotations:
         gke-gcsfuse/volumes: "true"
         gke-gcsfuse/memory-limit: "35Gi"
-        cluster-autoscaler.kubernetes.io/consume-provisioning-request: kh-a2-job
-        cluster-autoscaler.kubernetes.io/provisioning-class-name: "queued-provisioning.gke.io"     
+        # cluster-autoscaler.kubernetes.io/consume-provisioning-request: kh-a2-job
+        # cluster-autoscaler.kubernetes.io/provisioning-class-name: "queued-provisioning.gke.io"     
     spec:
       subdomain: headless-svc
       serviceAccountName: ray-worker
@@ -25,7 +25,7 @@ spec:
       containers:
       - name: gpu-job
         imagePullPolicy: Always 
-        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:v1.0.1
+        image: IMAGE_URL
         ports:
         - containerPort: 29500
         securityContext:
@@ -42,7 +42,7 @@ spec:
             accelerate launch \
             --config_file fsdp_config.yaml \
             --debug \
-            --main_process_ip ft-gemma2-job-0-J_IT.headless-svc \
+            --main_process_ip finetune-gemma-J_ID-0.headless-svc \
             --main_process_port 29500 \
             --machine_rank ${JOB_COMPLETION_INDEX} \
             --num_processes 2 \
@@ -50,7 +50,7 @@ spec:
             fine_tune.py
         env:
         - name: "EXPERIMENT"
-          value: "gemma2-ft-hyperparam"
+          value: "V_EXPERIMENT"
         - name: "MLFLOW_ENABLE"
           value: "true"
         - name: "MLFLOW_TRACKING_URI"
@@ -58,15 +58,15 @@ spec:
         - name: "MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING"
           value: "true"
         - name: "TRAINING_DATASET_BUCKET"
-          value: "kh-finetune-ds"
+          value: "V_TRAINING_DATASET_BUCKET"
         - name: "TRAINING_DATASET_PATH"
-          value: "/new-format/dataset-it/training"
+          value: "V_TRAINING_DATASET_PATH"
         - name: MODEL_NAME
-          value: "google/gemma-2-9b-it"
+          value: "V_MODEL_NAME"
         - name: NEW_MODEL
-          value: "gemma-2-9b-it-chatbot-J_IT"
+          value: "gemma-2-9b-it-chatbot-J_ID"
         - name: MODEL_PATH
-          value: "/model-data/hyperparam-gemma2/model-job-J_IT"
+          value: "V_MODEL_PATH"
         - name: NCCL_DEBUG
           value: "INFO"          
         - name: LORA_R
@@ -106,18 +106,18 @@ spec:
         csi:
           driver: gcsfuse.csi.storage.gke.io
           volumeAttributes:
-            bucketName: kh-test-data
+            bucketName: V_MODEL_BUCKET
             mountOptions: "implicit-dirs"
       nodeSelector:
         cloud.google.com/gke-accelerator: nvidia-tesla-a100
-        resource-type: gpu-a2
-        pool-type: a2-2
+        resource-type: gpu
+        resource-model: a100
       restartPolicy: OnFailure
       tolerations:
       - key: "nvidia.com/gpu"
         operator: "Exists"
         effect: "NoSchedule"
-      - key: "ondemand"
+      - key: "on-demand"
         value: "true"
         operator: "Equal"
         effect: "NoSchedule"

@@ -148,7 +148,7 @@ gcloud builds triggers create pubsub \
     --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("^(.*)training/state.json$") && _BUCKET_ID.matches("^kh-finetune-ds$")'
 ```
 
-## Create the trigger for new fine-tuned model
+## Create the trigger for fine-tuned model evaluation
 - Create the GCS Pub/Sub topic to trigger model eval
 ```
 BUCKET=kr-finetune
@@ -165,6 +165,19 @@ gcloud builds triggers create pubsub \
     --build-config=model-eval/cloudbuild-gcs-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_EVAL_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:b83710d','_VLLM_IMAGE_TAG=vllm/vllm-openai:v0.5.2','_CLUSTER_NAME=mlp-kenthua','_MODEL_PATH=${_OBJECT_ID/\/tokenizer_config.json/}','_DATASET_BUCKET=kh-finetune-ds','_DATA_COMMIT=${_MODEL_PATH##*-}' \
+    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_EVAL_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:a5812c1','_VLLM_IMAGE_TAG=vllm/vllm-openai:v0.5.2','_CLUSTER_NAME=mlp-kenthua','_MODEL_PATH=${_OBJECT_ID/\/tokenizer_config.json/}','_DATASET_BUCKET=kh-finetune-ds','_DATA_COMMIT=${_MODEL_PATH##*-}' \
     --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("(model-.*/experiment-.*/tokenizer_config.json)$") && _BUCKET_ID.matches("^kr-finetune$")'
+```
+
+# Batch Hyper Parameter Tuning Trigger
+-
+```
+gcloud builds triggers create github \
+    --name=model-hyperparam-deploy \
+    --region=${REGION} \
+    --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
+    --branch-pattern="^main$" \
+    --build-config="finetune-gemma/batch/cloudbuild-hyperparam.yaml" \
+    --included-files="finetune-gemma/batch/params.env" \
+    --substitutions='_IMAGE_URL=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:abctest','_CLUSTER_NAME=mlp-kenthua','_EXPERIMENT=gemma2','_MODEL_BUCKET=kr-finetune','_MODEL_NAME=google/gemma-2-9b-it','_MODEL_PATH=model-data/model-gemma2-a100/experiment','_TRAINING_DATASET_BUCKET=kh-finetune-ds','_TRAINING_DATASET_PATH=dataset/output-a2aa2c3','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}'
 ```
