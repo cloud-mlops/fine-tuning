@@ -112,7 +112,7 @@ gcloud builds triggers create pubsub \
     --build-config=finetune-gemma/cloudbuild-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_IMAGE_TAG=$(body.message.data.tag)','_ACTION=$(body.message.data.action)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=/new-format/dataset-it/training' \
+    --substitutions='_IMAGE_TAG=$(body.message.data.tag)','_ACTION=$(body.message.data.action)','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=/new-format/dataset-it/training','_MODEL_BUCKET=kr-finetune' \
     --subscription-filter='_IMAGE_TAG.matches("(us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune)(?::.+)?") && _ACTION.matches("INSERT")' \
     --service-account="projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 ```
@@ -144,7 +144,7 @@ gcloud builds triggers create pubsub \
     --build-config=finetune-gemma/cloudbuild-gcs-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:abctest','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=${_OBJECT_ID/\/state.json/}','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}' \
+    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:18c085a','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=${_OBJECT_ID/\/state.json/}','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}' \
     --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("^(.*)training/state.json$") && _BUCKET_ID.matches("^kh-finetune-ds$")'
 ```
 
@@ -165,7 +165,7 @@ gcloud builds triggers create pubsub \
     --build-config=model-eval/cloudbuild-gcs-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_EVAL_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:418446d','_VLLM_IMAGE_TAG=vllm/vllm-openai:v0.5.2','_CLUSTER_NAME=mlp-kenthua','_MODEL_PATH=${_OBJECT_ID/\/tokenizer_config.json/}','_DATASET_BUCKET=kh-finetune-ds','_DATA_COMMIT=${_MODEL_PATH##*-}' \
+    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_EVAL_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:18c085a','_VLLM_IMAGE_TAG=vllm/vllm-openai:v0.5.2','_CLUSTER_NAME=mlp-kenthua','_MODEL_PATH=${_OBJECT_ID/\/tokenizer_config.json/}','_DATASET_BUCKET=kh-finetune-ds','_DATA_COMMIT=${_MODEL_PATH##*-}' \
     --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("(model-.*/experiment-.*/tokenizer_config.json)$") && _BUCKET_ID.matches("^kr-finetune$")'
 ```
 
@@ -179,5 +179,5 @@ gcloud builds triggers create github \
     --branch-pattern="^main$" \
     --build-config="finetune-gemma/batch/cloudbuild-hyperparam.yaml" \
     --included-files="finetune-gemma/batch/params.env" \
-    --substitutions='_IMAGE_URL=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:abctest','_CLUSTER_NAME=mlp-kenthua','_EXPERIMENT=gemma2','_MODEL_BUCKET=kr-finetune','_MODEL_NAME=google/gemma-2-9b-it','_MODEL_PATH=model-data/model-gemma2-a100/experiment','_TRAINING_DATASET_BUCKET=kh-finetune-ds','_TRAINING_DATASET_PATH=dataset/output-a2aa2c3','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}'
+    --substitutions='_IMAGE_URL=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:18c085a','_CLUSTER_NAME=mlp-kenthua','_EXPERIMENT=gemma2','_MODEL_BUCKET=kr-finetune','_MODEL_NAME=google/gemma-2-9b-it','_MODEL_PATH=model-data/model-gemma2-a100/experiment','_TRAINING_DATASET_BUCKET=kh-finetune-ds','_TRAINING_DATASET_PATH=dataset/output-a2aa2c3','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}'
 ```

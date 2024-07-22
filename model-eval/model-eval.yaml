@@ -29,13 +29,6 @@ spec:
           value: "V_DATASET_TAG"
         - name: "BUCKET"
           value: "V_BUCKET"
-        ##
-        - name: "PROJECT_ID"
-          value: "V_PROJECT_ID"
-        - name: "PROMPT_MODEL_ID"
-          value: "V_PROMPT_MODEL_ID"
-        - name: "VERTEX_REGION"
-          value: "V_VERTEX_REGION"
         resources:
           requests:
             cpu: "2"
@@ -44,4 +37,3 @@ spec:
             cpu: "2"
             memory: "5Gi"
       restartPolicy: Never
-

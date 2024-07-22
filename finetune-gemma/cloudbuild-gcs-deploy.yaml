@@ -13,7 +13,8 @@ steps:
     sed -i -e "s|J_ID|${_DATA_COMMIT}|g" yaml/provisioning-request-${_ACCELERATOR}.yaml
     sed -i -e "s|J_ID|${_DATA_COMMIT}|g" \
       -i -e "s|IMAGE_URL|${_IMAGE_TAG}|" \
-      -i -e "s|V_TRAINING_DATASET_PATH|/${_TRAINING_DATASET_PATH}|g" \
+      -i -e "s|V_TRAINING_DATASET_PATH|/${_TRAINING_DATASET_PATH}|" \
+      -i -e "s|V_MODEL_BUCKET|${MODEL_BUCKET}"| \
       yaml/fine-tune-${_ACCELERATOR}-dws.yaml
   dir: "finetune-gemma"
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"

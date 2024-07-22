@@ -99,7 +99,7 @@ spec:
         csi:
           driver: gcsfuse.csi.storage.gke.io
           volumeAttributes:
-            bucketName: kr-finetune
+            bucketName: V_MODEL_BUCKET
             mountOptions: "implicit-dirs"
       nodeSelector:
         cloud.google.com/gke-accelerator: nvidia-tesla-a100
