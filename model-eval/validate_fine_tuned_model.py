@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from datasets import load_from_disk
 import os
+from google.cloud import storage
 
 
 class ModelEvaluation:
@@ -51,6 +52,14 @@ class ModelEvaluation:
                     f.write("----------\n")
             else:
                 print(f"Error: {response.status_code} - {response.text}")
+        
+        # save file to gcs
+        model_iteration_tag = self.model_name.rsplit("-", 1)[1]
+        client = storage.Client()
+        bucket = client.get_bucket(self.gcs_bucket)
+        with open(self.output_file, "r") as local_file:
+            blob = bucket.blob(f"/predictions/{self.output_file}-{model_iteration_tag}")
+            blob.upload_from_file(local_file)                
 
     # Function to extract product name from a line
     def extract_product_names(self, predictions_file: str) -> list[str]:
