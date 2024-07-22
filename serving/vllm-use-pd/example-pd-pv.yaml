@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: models-disk-1024gb-zone-a
+  labels:
+    pv-usage: model-cache
+    pv-spec: ssd-1024G
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 1024Gi
+  accessModes:
+  - ReadOnlyMany
+  gcePersistentDisk:
+    pdName: models-disk-1024gb-zone-a
+    fsType: ext4
+  mountOptions:
+  - read_ahead_kb=4096
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: topology.gke.io/zone
+          operator: In
+          values:
+          - asia-southeast1-a
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-model-weight-disk-1024gb-a-ro
+spec:
+  storageClassName: ""
+  accessModes:
+  - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1024Gi
+  selector:
+    matchLabels:
+      pv-usage: model-cache
+      pv-spec: ssd-1024G
