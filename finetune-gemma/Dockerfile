@@ -7,7 +7,7 @@ RUN apt-get update && \
 COPY fine_tune.py \
     fsdp_config.yaml \
     requirements.txt \
-    /workspace
+    /workspace/
 
 RUN pip3 install --no-cache-dir -r requirements.txt
 RUN CUDA_HOME=/usr/local/cuda-12.1 pip3 install --no-cache-dir flash-attn --no-build-isolation
