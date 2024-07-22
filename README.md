@@ -1,3 +1,17 @@
+# Cloud Build Trigger Setup for fine-tuning e2e
+
+As part of the many steps in order to perform the fine-tuning of a model, below are
+example triggers to help automate the process from data preparation to validation.
+
+- Triggers to build the respective image for each step in the process
+- Triggers for respective image pushes and bucket additions
+    - Data Prep Job - artifact registry trigger on new image
+    - Fine-tuning Job - artifact registry trigger on new image
+    - Data Prep Job - data trigger on new preprocessed data (not yet implemented)
+    - Fine-tuning Job - data trigger on new prompt generated data set
+    - Model evaluation Job - data trigger on new fine-tuned model
+    - Fine-tuning Hyperparameter - code trigger based on updated `params.env` to launch N jobs
+
 # Prereq
 ```
 export PROJECT_ID=gkebatchexpce3c8dcb
