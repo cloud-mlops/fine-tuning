@@ -8,14 +8,24 @@ from google.cloud import storage
 
 class ModelEvaluation:
     def __init__(self):  # Constructor
-        self.api_endpoint = os.getenv("ENDPOINT", "http://10.40.0.51:8000/v1/chat/completions")
-        self.model_name = os.getenv("MODEL_PATH", "/model-data/gemma2-a100/a100-abctest")
+        self.api_endpoint = os.getenv(
+            "ENDPOINT", "http://10.40.0.51:8000/v1/chat/completions"
+        )
+        self.model_name = os.getenv(
+            "MODEL_PATH", "/model-data/gemma2-a100/a100-abctest"
+        )
         self.output_file = os.getenv("PREDICTIONS_FILE", "predictions.txt")
-        self.gcs_bucket = os.getenv("BUCKET", 'kh-finetune-ds')
+        self.gcs_bucket = os.getenv("BUCKET", "kh-finetune-ds")
         self.dataset_tag = os.getenv("DATASET_TAG", "a2aa2c3")
-        training_dataset = load_from_disk(f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/training")
-        validation_dataset = load_from_disk(f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/validation")
-        test_dataset = load_from_disk(f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/test")
+        training_dataset = load_from_disk(
+            f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/training"
+        )
+        validation_dataset = load_from_disk(
+            f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/validation"
+        )
+        test_dataset = load_from_disk(
+            f"gs://{self.gcs_bucket}/dataset/output-{self.dataset_tag}/test"
+        )
         # convert output to pandas dataframe
         self.training_df = training_dataset.to_pandas()
         self.validation_df = validation_dataset.to_pandas()
@@ -25,6 +35,7 @@ class ModelEvaluation:
         self.df.reset_index(drop=True, inplace=True)
 
     def predict(self):
+        print("Start prediction evaluation")
         # Send the Request
         headers = {"Content-Type": "application/json"}
         for i in range(len(self.df)):
@@ -36,10 +47,12 @@ class ModelEvaluation:
                 "temperature": 0.5,
                 "top_k": 1.0,
                 "top_p": 1.0,
-                "max_tokens": 256
+                "max_tokens": 256,
             }
-            #print(f"API Endpoint {self.api_endpoint}")
-            response = requests.post(self.api_endpoint, headers=headers, data=json.dumps(request_data))
+            # print(f"API Endpoint {self.api_endpoint}")
+            response = requests.post(
+                self.api_endpoint, headers=headers, data=json.dumps(request_data)
+            )
 
             # Check for Successful Response
             if response.status_code == 200:
@@ -52,30 +65,32 @@ class ModelEvaluation:
                     f.write("----------\n")
             else:
                 print(f"Error: {response.status_code} - {response.text}")
-        
-        # save file to gcs
+
+        # save file to gcs after completion
         model_iteration_tag = self.model_name.rsplit("-", 1)[1]
         client = storage.Client()
         bucket = client.get_bucket(self.gcs_bucket)
         with open(self.output_file, "r") as local_file:
-            blob = bucket.blob(f"/predictions/{self.output_file}-{model_iteration_tag}")
-            blob.upload_from_file(local_file)                
+            blob = bucket.blob(f"predictions/{self.output_file}-{model_iteration_tag}")
+            blob.upload_from_file(local_file)
 
     # Function to extract product name from a line
     def extract_product_names(self, predictions_file: str) -> list[str]:
         product_names = []
         current_product = ""
         # Read and process the text file
-        with open(predictions_file, 'r') as file:
+        with open(predictions_file, "r") as file:
             for line in file:
                 line = line.strip()
                 # Check for the delimiter
-                #if line == "Prompt:":
+                # if line == "Prompt:":
                 if line == "----------":
                     if current_product:  # Ensure a product was found
                         product_names.append(current_product)
                     else:
-                        product_names.append(None) #When there is no product name in the prediction
+                        product_names.append(
+                            None
+                        )  # When there is no product name in the prediction
                     current_product = ""  # Reset for the next product
                 elif line.startswith("Product Name:"):
                     if not current_product:
@@ -88,19 +103,23 @@ class ModelEvaluation:
         return none_occurrences
 
     # Count True Positives and False Positives
-    def count_tp_fp(self, product_names: list[str], ground_truth: pd.DataFrame) -> (int, int):
+    def count_tp_fp(
+        self, product_names: list[str], ground_truth: pd.DataFrame
+    ) -> (int, int):
         true_positives_count = 0
         false_positives_count = 0
         for product_name in product_names:
             if product_name:
                 # Option 1: Partial Match
-                partial_match = ground_truth[ground_truth['Answer'].str.contains(product_name, case=False)]
+                partial_match = ground_truth[
+                    ground_truth["Answer"].str.contains(product_name, case=False)
+                ]
                 if not partial_match.empty:
                     print(f"Found partial matches for '{product_name}':")
                     true_positives_count += 1
                 else:
                     # Option 2: Full Match (if partial match not found)
-                    full_match = ground_truth[ground_truth['Answer'] == product_name]
+                    full_match = ground_truth[ground_truth["Answer"] == product_name]
                     if not full_match.empty:
                         print(f"Found exact match for '{product_name}':")
                         true_positives_count += 1
@@ -111,13 +130,15 @@ class ModelEvaluation:
 
     # Calculate Accuracy on Validation Dataset
     def calculate_accuracy(self):
-        ground_truth = pd.DataFrame(self.training_df['Answer'])
+        ground_truth = pd.DataFrame(self.training_df["Answer"])
         total_test_size = len(self.df)
         print("Test dataset size: ", total_test_size)
 
         product_names = self.extract_product_names(self.output_file)
 
-        true_positives_count, false_positives_count = self.count_tp_fp(product_names, ground_truth)
+        true_positives_count, false_positives_count = self.count_tp_fp(
+            product_names, ground_truth
+        )
         none_predictions = self.count_no_products_prediction(product_names)
         print("True Positives Count:", true_positives_count)
         print("False Positives Count:", false_positives_count)
@@ -127,8 +148,14 @@ class ModelEvaluation:
         print(f"Accuracy of Gemma2 9B IT model on test dataset is ", accuracy, "%")
 
         if true_positives_count | false_positives_count:
-            precision = round((true_positives_count / (true_positives_count + false_positives_count)) * 100, 2)
-            print(f"Precision of Gemma2 9B IT model on test dataset is ", precision, "%")
+            precision = round(
+                (true_positives_count / (true_positives_count + false_positives_count))
+                * 100,
+                2,
+            )
+            print(
+                f"Precision of Gemma2 9B IT model on test dataset is ", precision, "%"
+            )
 
     def evaluate(self):
         if "ACTION" in os.environ and os.getenv("ACTION") == "predict":
@@ -140,4 +167,3 @@ class ModelEvaluation:
 if __name__ == "__main__":
     model_eval = ModelEvaluation()
     model_eval.evaluate()
-

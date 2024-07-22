@@ -12,12 +12,15 @@ from datasets import load_from_disk
 
 from accelerate import Accelerator
 from accelerate.logging import get_logger
+
 logger = get_logger(__name__, log_level="DEBUG")
 
 if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
     import mlflow
 
-    remote_server_uri = os.getenv("MLFLOW_TRACKING_URI", "http://mlflow-tracking-service.ml-tools:5000")
+    remote_server_uri = os.getenv(
+        "MLFLOW_TRACKING_URI", "http://mlflow-tracking-service.ml-tools:5000"
+    )
     mlflow.set_tracking_uri(remote_server_uri)
 
     experiment = os.getenv("EXPERIMENT", "/ex-gemma-unsloth")
@@ -30,7 +33,9 @@ accelerator = Accelerator()
 # The bucket which contains the training data
 training_data_bucket = os.getenv("TRAINING_DATASET_BUCKET", "kh-finetune-ds")
 
-training_data_path = os.getenv("TRAINING_DATASET_PATH", "/new-format/dataset-it/training")
+training_data_path = os.getenv(
+    "TRAINING_DATASET_PATH", "/new-format/dataset-it/training"
+)
 
 # The model that you want to train from the Hugging Face hub
 model_name = os.getenv("MODEL_NAME", "google/gemma-1.1-7b-it")
@@ -47,12 +52,15 @@ tokenizer.pad_token = tokenizer.eos_token
 tokenizer.padding_side = "right"  # Fix weird overflow issue with fp16 training
 
 EOS_TOKEN = tokenizer.eos_token
+
+
 def formatting_prompts_func(example):
     output_texts = []
     for i in range(len(example["prompt"])):
         text = f"""{example["prompt"][i]}\n{EOS_TOKEN}"""
         output_texts.append(text)
     return {"prompts": output_texts}
+
 
 training_dataset = load_from_disk(f"gs://{training_data_bucket}{training_data_path}")
 
@@ -62,9 +70,7 @@ print("Data Formatting Completed")
 
 INPUT_OUTPUT_DELIMITER = "<start_of_turn>model"
 
-collator = DataCollatorForCompletionOnlyLM(
-  INPUT_OUTPUT_DELIMITER, tokenizer=tokenizer
-  )
+collator = DataCollatorForCompletionOnlyLM(INPUT_OUTPUT_DELIMITER, tokenizer=tokenizer)
 
 ################################################################################
 # QLoRA parameters
@@ -148,14 +154,12 @@ packing = False
 
 # Load base model
 model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    attn_implementation="flash_attention_2",
-    torch_dtype=torch.bfloat16
+    model_name, attn_implementation="flash_attention_2", torch_dtype=torch.bfloat16
 )
 model.config.use_cache = False
 model.config.pretraining_tp = 1
 
-#optimizer = torch.optim.AdamW(model.parameters(), lr=2e-4)
+# optimizer = torch.optim.AdamW(model.parameters(), lr=2e-4)
 
 # Load LoRA configuration
 peft_config = LoraConfig(
@@ -164,8 +168,15 @@ peft_config = LoraConfig(
     r=lora_r,
     bias="none",
     task_type="CAUSAL_LM",
-    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                      "gate_proj", "up_proj", "down_proj",],
+    target_modules=[
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+    ],
 )
 
 # Set training parameters
@@ -175,7 +186,7 @@ training_arguments = SFTConfig(
     per_device_train_batch_size=per_device_train_batch_size,
     gradient_accumulation_steps=gradient_accumulation_steps,
     gradient_checkpointing=gradient_checkpointing,
-    gradient_checkpointing_kwargs={'use_reentrant':False},
+    gradient_checkpointing_kwargs={"use_reentrant": False},
     optim=optim,
     save_steps=save_steps,
     logging_steps=logging_steps,
@@ -190,7 +201,7 @@ training_arguments = SFTConfig(
     lr_scheduler_type=lr_scheduler_type,
     dataset_text_field="prompts",
     max_seq_length=max_seq_length,
-    packing=packing
+    packing=packing,
 )
 
 trainer = SFTTrainer(
@@ -203,7 +214,7 @@ trainer = SFTTrainer(
     dataset_kwargs={
         "add_special_tokens": False,  # We template with special tokens
         "append_concat_token": False,  # No need to add additional separator token
-    }
+    },
 )
 
 print("Fine tuning started")
@@ -212,8 +223,7 @@ print("Fine tuning completed")
 
 if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
     mv = mlflow.register_model(
-        model_uri = f"gs://{training_data_bucket}/{save_model_path}",
-        name=new_model
+        model_uri=f"gs://{training_data_bucket}/{save_model_path}", name=new_model
     )
     print(f"Name: {mv.name}")
     print(f"Version: {mv.version}")
@@ -224,10 +234,7 @@ trainer.model.save_pretrained(new_model)
 print("Merging the model with base model")
 # Reload model in FP16 and merge it with LoRA weights
 base_model = AutoModelForCausalLM.from_pretrained(
-    model_name,
-    low_cpu_mem_usage=True,
-    return_dict=True,
-    torch_dtype=torch.bfloat16
+    model_name, low_cpu_mem_usage=True, return_dict=True, torch_dtype=torch.bfloat16
 )
 model = PeftModel.from_pretrained(base_model, new_model)
 
@@ -240,7 +247,7 @@ print("Save new model")
 unwrapped_model.save_pretrained(
     save_model_path,
     is_main_process=accelerator.is_main_process,
-    save_function=accelerator.save
+    save_function=accelerator.save,
 )
 
 print("Save new tokenizer")
