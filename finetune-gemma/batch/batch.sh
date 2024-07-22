@@ -51,7 +51,7 @@ do
         -e s/V_WARMUP_RATIO/${V_WARMUP_RATIO[IDX]}/g \
         -e s/V_MAX_SEQ_LENGTH/${V_MAX_SEQ_LENGTH[IDX]}/g \
         -e s,IMAGE_URL,${HP_IMAGE_URL},g \
-        -e s/V_EXPERIMENT/${HP_EXPERIMENT}-${JOB_ID}/g \
+        -e s/V_EXPERIMENT/${HP_EXPERIMENT}-${DATA_COMMIT}/g \
         -e s/V_MODEL_BUCKET/${HP_MODEL_BUCKET}/g \
         -e s,V_MODEL_NAME,${HP_MODEL_NAME},g \
         -e s/V_TRAINING_DATASET_BUCKET/${HP_TRAINING_DATASET_BUCKET}/g \
