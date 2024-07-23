@@ -54,7 +54,6 @@ kubectl create secret generic hf-secret \
 | EXPERIMENT | If MLflow is enabled. experiment ID used in MLflow | experiment- | 
 | MLFLOW_TRACKING_URI | If MLflow is enabled, the tracking server URI | http://mlflow-tracking-service.ml-tools:5000 |
 | MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING | If MLflow is enabled, track system level metrics, CPU/Memory/GPU| true/false |
-| DATASET_OUTPUT_PATH | The folder path of where the generated output data set will reside. This path will be needed for fine-tuning. | dataset/output |
 | TRAINING_DATASET_BUCKET | The bucket which contains the generated prompts for fine-tuning. | kh-finetune-ds |
 | TRAINING_DATASET_PATH | The path where the generated prompt data is for fine-tuning. | dataset/output |
 | V_MODEL_BUCKET | The bucket which will be the destination of the fine-tuned model. | kr-finetune |

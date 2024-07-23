@@ -27,6 +27,7 @@ steps:
       -i -e "s|V_ENDPOINT|http://vllm-openai-${_DATA_COMMIT}.ml-team:8000/v1/chat/completions|" \
       -i -e "s|V_MODEL_PATH|/model-data/${_MODEL_PATH}|" \
       -i -e "s|V_DATASET_TAG|$(sed -r 's/it[0-9]+//g' <<< ${_DATA_COMMIT})|" \
+      -i -e "s|V_DATASET_OUTPUT_PATH|${_DATASET_OUTPUT_PATH}|" \
       -i -e "s|V_BUCKET|${_DATASET_BUCKET}|" \
       model-eval.yaml
   dir: "model-eval"
