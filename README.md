@@ -179,7 +179,7 @@ gcloud builds triggers create pubsub \
     --build-config=model-eval/cloudbuild-gcs-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_EVAL_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:f804348','_VLLM_IMAGE_TAG=vllm/vllm-openai:v0.5.2','_CLUSTER_NAME=mlp-kenthua','_MODEL_PATH=${_OBJECT_ID/\/tokenizer_config.json/}','_DATASET_BUCKET=kh-finetune-ds','_DATA_COMMIT=${_MODEL_PATH##*-}','_DATASET_OUTPUT_PATH=dataset/output-${_DATA_COMMIT}' \
+    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_EVAL_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:f804348','_VLLM_IMAGE_TAG=vllm/vllm-openai:v0.5.2','_CLUSTER_NAME=mlp-kenthua','_MODEL_PATH=${_OBJECT_ID/\/tokenizer_config.json/}','_DATASET_BUCKET=kh-finetune-ds','_DATA_COMMIT=${_MODEL_PATH##*-}','_DATASET_OUTPUT_PATH=dataset/output' \
     --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("(model-.*/experiment-.*/tokenizer_config.json)$") && _BUCKET_ID.matches("^kr-finetune$")'
 ```
 

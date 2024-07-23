@@ -22,7 +22,9 @@ KSA=ray-worker
 HF_TOKEN=<your token>
 ```
 
-## Configure GCS
+## GCS
+The training data set is retrieved from a storage bucket and the fine-tuned model weights are saved onto a locally mounted storage bucket.
+
 - Setup Workload Identity Federation to access the bucket with the generated prompts
 ```
 gcloud storage buckets add-iam-policy-binding gs://${TRAINING_DATASET_BUCKET} \

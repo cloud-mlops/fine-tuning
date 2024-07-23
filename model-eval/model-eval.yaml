@@ -25,8 +25,6 @@ spec:
           value: "V_ENDPOINT"
         - name: "MODEL_PATH"
           value: "V_MODEL_PATH"
-        - name: "DATASET_TAG"
-          value: "V_DATASET_TAG"
         - name: "DATASET_OUTPUT_PATH"
           value: "V_DATASET_OUTPUT_PATH"
         - name: "BUCKET"

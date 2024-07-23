@@ -17,7 +17,6 @@ class ModelEvaluation:
         self.output_file = os.getenv("PREDICTIONS_FILE", "predictions.txt")
         self.gcs_bucket = os.getenv("BUCKET", "kh-finetune-ds")
         self.dataset_output_path = os.getenv("DATASET_OUTPUT_PATH", "dataset/output")
-        self.dataset_tag = os.getenv("DATASET_TAG", "a2aa2c3")
         training_dataset = load_from_disk(
             f"gs://{self.gcs_bucket}/{self.dataset_output_path}/training"
         )

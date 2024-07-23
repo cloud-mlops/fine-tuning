@@ -16,22 +16,33 @@ gcloud builds submit .
 ```
 PROJECT_ID=gkebatchexpce3c8dcb
 PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
-BUCKET=kh-finetune-ds
+TRAINING_DATASET_BUCKET=kh-finetune-ds
+V_MODEL_BUCKET=kr-finetune
 NAMESPACE=ml-team
 KSA=ray-worker
 ```
 
-- Setup Workload Identity Federation access to read/write to the bucket
+# GCS
+The training data set is retrieved from a storage bucket and the fine-tuned model weights are saved onto a locally mounted storage bucket.
+
+- Setup Workload Identity Federation access to read/write to the bucket for the training data set.
 ```
-gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
+gcloud storage buckets add-iam-policy-binding gs://${TRAINING_DATASET_BUCKET} \
     --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
     --role "roles/storage.objectUser"
 ```
 
 ```
-gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
+gcloud storage buckets add-iam-policy-binding gs://${TRAINING_DATASET_BUCKET} \
     --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
     --role "roles/storage.legacyBucketWriter"
+```
+
+- Setup Workload Identity Federation access to read from the bucket for the model weights, for vLLM
+```
+gcloud storage buckets add-iam-policy-binding gs://${V_MODEL_BUCKET} \
+    --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
+    --role "roles/storage.objectUser"
 ```
 
 ## Model evaluation Job inputs
@@ -41,7 +52,6 @@ gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
 | IMAGE_URL | The image url of the validate image | |
 | BUCKET | The bucket where the fine-tuning data set is located | kh-finetune-ds | 
 | MODEL_PATH | The output folder path for the fine-tuned model.  This is used by model evaluation to generate the prompt. | /model-data/model-gemma2-a100/experiment |
-| DATASET_TAG | This is the unique tag/suffix of the dataset. Mapped to a generated commit id, i.e output-[id] (optional) | a2aa2c3 | 
 | DATASET_OUTPUT_PATH | The folder path of the generated output data set. | dataset/output |
 | ENDPOINT | This is the endpoint URL of the inference server | http://10.40.0.51:8000/v1/chat/completions | 
 
@@ -49,3 +59,4 @@ gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
 | --- | --- | --- |
 | IMAGE_URL | The image url for the vllm image | |
 | MODEL | The output folder path for the fine-tuned model | /model-data/model-gemma2-a100/experiment |
+| V_BUCKET | The bucket where the model weights are located | kr-finetune |
