@@ -19,13 +19,13 @@ class ModelEvaluation:
         self.dataset_output_path = os.getenv("DATASET_OUTPUT_PATH", "dataset/output")
         self.dataset_tag = os.getenv("DATASET_TAG", "a2aa2c3")
         training_dataset = load_from_disk(
-            f"gs://{self.gcs_bucket}/{self.dataset_output_path}-{self.dataset_tag}/training"
+            f"gs://{self.gcs_bucket}/{self.dataset_output_path}/training"
         )
         validation_dataset = load_from_disk(
-            f"gs://{self.gcs_bucket}/{self.dataset_output_path}-{self.dataset_tag}/validation"
+            f"gs://{self.gcs_bucket}/{self.dataset_output_path}/validation"
         )
         test_dataset = load_from_disk(
-            f"gs://{self.gcs_bucket}/{self.dataset_output_path}-{self.dataset_tag}/test"
+            f"gs://{self.gcs_bucket}/{self.dataset_output_path}/test"
         )
         # convert output to pandas dataframe
         self.training_df = training_dataset.to_pandas()

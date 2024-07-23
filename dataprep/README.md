@@ -24,7 +24,7 @@ KSA=ray-worker
 - Setup Workload Identity Federation access to read/write to the bucket
 ```
 gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
-    --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
+    --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
     --role "roles/storage.objectUser"
 ```
 
