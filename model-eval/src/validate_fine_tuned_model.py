@@ -1,9 +1,15 @@
+import os
 import requests
 import json
 import pandas as pd
+import logging.conf
 from datasets import load_from_disk
-import os
 from google.cloud import storage
+
+
+logging.config.fileConfig("logging.conf")
+logger = logging.getLogger("modeleval")
+logger.debug(logger)
 
 
 class ModelEvaluation:
@@ -35,7 +41,7 @@ class ModelEvaluation:
         self.df.reset_index(drop=True, inplace=True)
 
     def predict(self):
-        print("Start prediction evaluation")
+        logger.info("Start prediction evaluation")
         # Send the Request
         headers = {"Content-Type": "application/json"}
         for i in range(len(self.df)):
@@ -64,7 +70,7 @@ class ModelEvaluation:
                     f.write(ai_response + "\n")  # Append with newline
                     f.write("----------\n")
             else:
-                print(f"Error: {response.status_code} - {response.text}")
+                logger.error(f"Error: {response.status_code} - {response.text}")
 
         # save file to gcs after completion
         model_iteration_tag = self.model_name.rsplit("-", 1)[1]
@@ -115,16 +121,18 @@ class ModelEvaluation:
                     ground_truth["Answer"].str.contains(product_name, case=False)
                 ]
                 if not partial_match.empty:
-                    print(f"Found partial matches for '{product_name}':")
+                    logger.info(f"Found partial matches for '{product_name}':")
                     true_positives_count += 1
                 else:
                     # Option 2: Full Match (if partial match not found)
                     full_match = ground_truth[ground_truth["Answer"] == product_name]
                     if not full_match.empty:
-                        print(f"Found exact match for '{product_name}':")
+                        logger.info(f"Found exact match for '{product_name}':")
                         true_positives_count += 1
                     else:
-                        print(f"No match found for '{product_name}' in DataFrame.")
+                        logger.info(
+                            f"No match found for '{product_name}' in DataFrame."
+                        )
                         false_positives_count += 1
         return true_positives_count, false_positives_count
 
@@ -132,7 +140,7 @@ class ModelEvaluation:
     def calculate_accuracy(self):
         ground_truth = pd.DataFrame(self.training_df["Answer"])
         total_test_size = len(self.df)
-        print("Test dataset size: ", total_test_size)
+        logger.info("Test dataset size: ", total_test_size)
 
         product_names = self.extract_product_names(self.output_file)
 
@@ -140,12 +148,14 @@ class ModelEvaluation:
             product_names, ground_truth
         )
         none_predictions = self.count_no_products_prediction(product_names)
-        print("True Positives Count:", true_positives_count)
-        print("False Positives Count:", false_positives_count)
-        print("Number of predictions with no product details: ", none_predictions)
+        logger.info("True Positives Count:", true_positives_count)
+        logger.info("False Positives Count:", false_positives_count)
+        logger.info("Number of predictions with no product details: ", none_predictions)
 
         accuracy = round((true_positives_count / total_test_size) * 100, 2)
-        print(f"Accuracy of Gemma2 9B IT model on test dataset is ", accuracy, "%")
+        logger.info(
+            f"Accuracy of Gemma2 9B IT model on test dataset is ", accuracy, "%"
+        )
 
         if true_positives_count | false_positives_count:
             precision = round(
@@ -153,7 +163,7 @@ class ModelEvaluation:
                 * 100,
                 2,
             )
-            print(
+            logger.info(
                 f"Precision of Gemma2 9B IT model on test dataset is ", precision, "%"
             )
 

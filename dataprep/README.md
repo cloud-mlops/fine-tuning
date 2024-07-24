@@ -5,20 +5,21 @@ The prompts are generated using Vertex AI's Gemini Flash model. The output is a 
 the base model.
 
 
-## Build the image of the source
-- Modify cloudbuild.yaml to specify the image url
-```
-gcloud builds submit .
-```
-
-## Permissions
+## Preparation
 - Environment Variables
 ```
 PROJECT_ID=gkebatchexpce3c8dcb
 PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
-BUCKET=kh-finetune-ds
+BUCKET=kh-finetune-ds1
 NAMESPACE=ml-team
 KSA=ray-worker
+```
+
+- Create the bucket for storing the training data set
+```
+gcloud storage buckets create gs://${BUCKET} \
+    --project ${PROJECT_ID} \
+    --location us
 ```
 
 - Setup Workload Identity Federation access to read/write to the bucket
@@ -34,6 +35,12 @@ gcloud projects add-iam-policy-binding projects/${PROJECT_ID} \
     --member=principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA} \
     --role=roles/aiplatform.user \
     --condition=None
+```
+
+## Build the image of the source
+- Modify cloudbuild.yaml to specify the image url
+```
+gcloud builds submit . --project ${PROJECT_ID}
 ```
 
 ## Data Prepraration Job inputs

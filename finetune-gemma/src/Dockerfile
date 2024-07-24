@@ -7,6 +7,7 @@ RUN apt-get update && \
 COPY fine_tune.py \
     fsdp_config.yaml \
     requirements.txt \
+    logging.conf \
     /workspace/
 
 RUN pip3 install --no-cache-dir -r requirements.txt

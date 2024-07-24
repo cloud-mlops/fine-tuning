@@ -5,7 +5,7 @@ steps:
   - -t
   - us-docker.pkg.dev/${PROJECT_ID}/llm/validate:${_VERSION}
   - .
-  dir: "./model-eval"
+  dir: "src"
 images:
   - us-docker.pkg.dev/${PROJECT_ID}/llm/validate:${_VERSION}
 substitutions:

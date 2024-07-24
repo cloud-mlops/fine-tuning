@@ -5,7 +5,7 @@ steps:
   - -t
   - us-docker.pkg.dev/${PROJECT_ID}/llm/dataprep:${_VERSION}
   - .
-  dir: "./dataprep"
+  dir: "src"
 images:
   - us-docker.pkg.dev/${PROJECT_ID}/llm/dataprep:${_VERSION}
 substitutions:
