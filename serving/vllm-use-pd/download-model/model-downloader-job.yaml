@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: module-download-job-
+  labels:
+    app: model-downloader
+spec:
+  activeDeadlineSeconds: 7200
+  backoffLimit: 2
+  completionMode: NonIndexed
+  completions: 1
+  manualSelector: false
+  parallelism: 1
+  template:
+    metadata:
+      annotations:
+        gke-gcsfuse/volumes: 'true'
+        gke-gcsfuse/memory-limit: 10Gi
+        gke-gcsfuse/memory-request: 4Gi
+    spec:
+      containers:
+      - name: dldr
+        image: debian:latest
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          mkdir -p /mnt/model-gemma2-a100
+          cp -r /data/models/model-gemma2-a100/experiment-a2aa2c3it1 /mnt/model-gemma2-a100
+          ls -lR /mnt/model-gemma2-a100
+        volumeMounts:
+        - name: model-weights
+          mountPath: /data/models
+        - name: data
+          mountPath: /mnt
+        securityContext:
+          privileged: true
+      restartPolicy: Never
+      tolerations:
+      - effect: NoSchedule
+        key: nvidia.com/gpu
+        operator: Exists
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: block-pvc
+      - name: model-weights
+        csi:
+          driver: gcsfuse.csi.storage.gke.io
+          readOnly: true
+          volumeAttributes:
+            bucketName: kr-finetune
+            mountOptions: implicit-dirs
+            gcsfuseLoggingSeverity: warning
+            fileCacheCapacity: 10Gi

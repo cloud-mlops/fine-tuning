@@ -12,10 +12,10 @@ spec:
       labels:
         app: vllm-openai
     spec:
-      serviceAccountName: ray-worker
+      serviceAccountName: default
       containers:
       - name: inference-server
-        image: vllm/vllm-openai:v0.5.0.post1
+        image: vllm/vllm-openai:v0.5.3
         resources:
           requests:
             cpu: "2"
@@ -32,12 +32,9 @@ spec:
         - --tensor-parallel-size=2
         env:
         - name: MODEL
-          value: /model-data/hyperparam/model-job-1
-        - name: HUGGING_FACE_HUB_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: hf-secret
-              key: hf_api_token
+          value: /model-data/model-gemma2-a100/experiment-a2aa2c3it1
+        - name: VLLM_ATTENTION_BACKEND
+          value: FLASHINFER
         volumeMounts:
         - mountPath: /dev/shm
           name: dshm
@@ -50,10 +47,11 @@ spec:
             medium: Memory
       - name: model-disk
         persistentVolumeClaim:
-          claimName: pvc-model-weight-disk-1024gb-a-ro
+          claimName: pvc-model-weight-disk-1024gb-c-ro
           readOnly: true                  
       nodeSelector:
         cloud.google.com/gke-accelerator: nvidia-l4
+        topology.gke.io/zone: us-east4-c
 ---
 apiVersion: v1
 kind: Service
