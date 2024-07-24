@@ -29,6 +29,7 @@ if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
 
     mlflow.set_experiment(experiment)
     mlflow.autolog()
+    current_run = mlflow.start_run()
 
 accelerator = Accelerator()
 
@@ -64,7 +65,7 @@ def formatting_prompts_func(example):
     return {"prompts": output_texts}
 
 
-training_dataset = load_from_disk(f"gs://{training_data_bucket}{training_data_path}")
+training_dataset = load_from_disk(f"gs://{training_data_bucket}/{training_data_path}")
 
 logger.info("Data Formatting Started")
 input_data = training_dataset.map(formatting_prompts_func, batched=True)
@@ -225,7 +226,9 @@ logger.info("Fine tuning completed")
 
 if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
     mv = mlflow.register_model(
-        model_uri=f"gs://{training_data_bucket}/{save_model_path}", name=new_model
+        # model_uri=f"gs://{training_data_bucket}/{save_model_path}", name=new_model
+        f"runs:/{current_run.info.run_id}/{new_model}",
+        new_model,
     )
     logger.info(f"Name: {mv.name}")
     logger.info(f"Version: {mv.version}")
