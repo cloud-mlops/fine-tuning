@@ -1,5 +1,8 @@
 import os
 import torch
+import logging.config
+from accelerate import Accelerator
+
 from datasets import load_dataset, Dataset
 from transformers import (
     AutoModelForCausalLM,
@@ -10,10 +13,9 @@ from trl import SFTConfig
 from trl import SFTTrainer, DataCollatorForCompletionOnlyLM
 from datasets import load_from_disk
 
-from accelerate import Accelerator
-from accelerate.logging import get_logger
-
-logger = get_logger(__name__, log_level="DEBUG")
+logging.config.fileConfig("logging.conf")
+logger = logging.getLogger("finetune")
+logger.debug(logger)
 
 if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
     import mlflow
@@ -64,9 +66,9 @@ def formatting_prompts_func(example):
 
 training_dataset = load_from_disk(f"gs://{training_data_bucket}{training_data_path}")
 
-print("Data Formatting Started")
+logger.info("Data Formatting Started")
 input_data = training_dataset.map(formatting_prompts_func, batched=True)
-print("Data Formatting Completed")
+logger.info("Data Formatting Completed")
 
 INPUT_OUTPUT_DELIMITER = "<start_of_turn>model"
 
@@ -217,21 +219,21 @@ trainer = SFTTrainer(
     },
 )
 
-print("Fine tuning started")
+logger.info("Fine tuning started")
 trainer.train()
-print("Fine tuning completed")
+logger.info("Fine tuning completed")
 
 if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
     mv = mlflow.register_model(
         model_uri=f"gs://{training_data_bucket}/{save_model_path}", name=new_model
     )
-    print(f"Name: {mv.name}")
-    print(f"Version: {mv.version}")
+    logger.info(f"Name: {mv.name}")
+    logger.info(f"Version: {mv.version}")
 
-print("Saving new model")
+logger.info("Saving new model")
 trainer.model.save_pretrained(new_model)
 
-print("Merging the model with base model")
+logger.info("Merging the model with base model")
 # Reload model in FP16 and merge it with LoRA weights
 base_model = AutoModelForCausalLM.from_pretrained(
     model_name, low_cpu_mem_usage=True, return_dict=True, torch_dtype=torch.bfloat16
@@ -240,18 +242,18 @@ model = PeftModel.from_pretrained(base_model, new_model)
 
 model = model.merge_and_unload()
 
-print("Accelerate unwrap model")
+logger.info("Accelerate unwrap model")
 unwrapped_model = accelerator.unwrap_model(model)
 
-print("Save new model")
+logger.info("Save new model")
 unwrapped_model.save_pretrained(
     save_model_path,
     is_main_process=accelerator.is_main_process,
     save_function=accelerator.save,
 )
 
-print("Save new tokenizer")
+logger.info("Save new tokenizer")
 if accelerator.is_main_process:
     tokenizer.save_pretrained(save_model_path)
 
-print("### Completed ###")
+logger.info("### Completed ###")

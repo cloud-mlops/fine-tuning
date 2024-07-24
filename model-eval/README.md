@@ -5,13 +5,7 @@ against the dataset used to fine-tune the model. In this example, the model is d
 inference serving engine to host the model for the model validaiton to take place.  Two steps are performed
 for this activity, the first is to send prompts to the fine-tuned model, the second is to validate the results.
 
-# Build the image of the source
-- Modify cloudbuild.yaml to specify the image url
-```
-gcloud builds submit .
-```
-
-## Permissions
+## Preparation
 - Environment Variables
 ```
 PROJECT_ID=gkebatchexpce3c8dcb
@@ -43,6 +37,12 @@ gcloud storage buckets add-iam-policy-binding gs://${TRAINING_DATASET_BUCKET} \
 gcloud storage buckets add-iam-policy-binding gs://${V_MODEL_BUCKET} \
     --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
     --role "roles/storage.objectUser"
+```
+
+## Build the image of the source
+- Modify cloudbuild.yaml to specify the image url
+```
+gcloud builds submit . --project ${PROJECT_ID}
 ```
 
 ## Model evaluation Job inputs

@@ -5,7 +5,7 @@ steps:
   - -t
   - us-docker.pkg.dev/${PROJECT_ID}/llm/finetune:${_VERSION}
   - .
-  dir: "./finetune-gemma"
+  dir: "src"
 images:
   - us-docker.pkg.dev/${PROJECT_ID}/llm/finetune:${_VERSION}
 substitutions:

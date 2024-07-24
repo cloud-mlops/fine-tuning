@@ -158,7 +158,7 @@ gcloud builds triggers create pubsub \
     --build-config=finetune-gemma/cloudbuild-gcs-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:18c085a','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=${_OBJECT_ID/\/state.json/}','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}' \
+    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:18c085a','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=${_OBJECT_ID/\/state.json/}','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}','_MODEL_BUCKET=kr-finetune' \
     --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("^(.*)training/state.json$") && _BUCKET_ID.matches("^kh-finetune-ds$")'
 ```
 
