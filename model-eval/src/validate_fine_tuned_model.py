@@ -2,7 +2,7 @@ import os
 import requests
 import json
 import pandas as pd
-import logging.conf
+import logging.config
 from datasets import load_from_disk
 from google.cloud import storage
 

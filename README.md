@@ -158,7 +158,7 @@ gcloud builds triggers create pubsub \
     --build-config=finetune-gemma/cloudbuild-gcs-deploy.yaml \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
-    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:18c085a','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=${_OBJECT_ID/\/state.json/}','_DATA_COMMIT=${_TRAINING_DATASET_PATH##*-}','_MODEL_BUCKET=kr-finetune' \
+    --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:18c085a','_IMAGE_VERSION=${_IMAGE_TAG##*:}','_ACCELERATOR=a100','_CLUSTER_NAME=mlp-kenthua','_TRAINING_DATASET_PATH=${_OBJECT_ID/\/state.json/}','_DATASET_ROOT=${_OBJECT_ID/\/training\/state.json/}','_DATA_COMMIT=${_DATASET_ROOT##*-}','_MODEL_BUCKET=kr-finetune' \
     --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("^(.*)training/state.json$") && _BUCKET_ID.matches("^kh-finetune-ds$")'
 ```
 
@@ -180,7 +180,8 @@ gcloud builds triggers create pubsub \
     --repository="projects/${PROJECT_ID}/locations/${REGION}/connections/${REPOSITORY_CONNECTION_NAME}/repositories/${REPOSITORY}" \
     --branch="main" \
     --substitutions='_EVENT_TYPE=$(body.message.attributes.eventType)','_BUCKET_ID=$(body.message.attributes.bucketId)','_OBJECT_ID=$(body.message.attributes.objectId)','_EVAL_IMAGE_TAG=us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:a482cf9','_VLLM_IMAGE_TAG=vllm/vllm-openai:v0.5.2','_CLUSTER_NAME=mlp-kenthua','_MODEL_PATH=${_OBJECT_ID/\/tokenizer_config.json/}','_DATASET_BUCKET=kh-finetune-ds','_DATA_COMMIT=${_MODEL_PATH##*-}','_DATASET_OUTPUT_PATH=dataset/output' \
-    --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("(model-.*/experiment-.*/tokenizer_config.json)$") && _BUCKET_ID.matches("^kr-finetune$")'
+    --subscription-filter='_EVENT_TYPE.matches("OBJECT_FINALIZE") && _OBJECT_ID.matches("(model-.*/experiment-.*/tokenizer_config.json)$") && _BUCKET_ID.matches("^kr-finetune$")' \
+    --service-account="projects/${PROJECT_ID}/serviceAccounts/${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"    
 ```
 
 # Batch Hyper Parameter Tuning Trigger
