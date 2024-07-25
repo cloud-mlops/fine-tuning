@@ -29,7 +29,6 @@ if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
 
     mlflow.set_experiment(experiment)
     mlflow.autolog()
-    current_run = mlflow.start_run()
 
 accelerator = Accelerator()
 
@@ -226,9 +225,7 @@ logger.info("Fine tuning completed")
 
 if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
     mv = mlflow.register_model(
-        # model_uri=f"gs://{training_data_bucket}/{save_model_path}", name=new_model
-        f"runs:/{current_run.info.run_id}/{new_model}",
-        new_model,
+        model_uri=f"gs://{training_data_bucket}/{save_model_path}", name=new_model
     )
     logger.info(f"Name: {mv.name}")
     logger.info(f"Version: {mv.version}")
