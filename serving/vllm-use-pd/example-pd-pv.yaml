@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: models-disk-1024gb-zone-c-1
+  namespace: jscheng
+  labels:
+    pv-usage: model-cache-1
+    pv-spec: ssd-1024G
+    pv-zone: us-east4-c
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 1024Gi
+  accessModes:
+  - ReadOnlyMany
+  csi:
+    driver: pd.csi.storage.gke.io
+    volumeHandle: projects/gkebatchexpce3c8dcb/zones/us-east4-c/disks/models-disk-gemma2-a100-experiment-a2aa2c3it1
+    fsType: ext4
+    readOnly: true
+  mountOptions:
+  - read_ahead_kb=4096
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: topology.gke.io/zone
+          operator: In
+          values:
+          - us-east4-c
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-model-weight-disk-1024gb-c-ro
+  namespace: jscheng
+spec:
+  storageClassName: ""
+  accessModes:
+  - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1024Gi
+  selector:
+    matchLabels:
+      pv-usage: model-cache-1
+      pv-spec: ssd-1024G
+      pv-zone: us-east4-c
