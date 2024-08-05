@@ -29,17 +29,17 @@ By the end of this guide, you should be able to perform the following steps:
 3. Fine tune or other model available ready to be served.If you have been following the [fine tuning exercise with gemma model](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch), a model artifact would be availble to use in [your model artifacts GCS bucket](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch)
 4. Set these Enviorment variables.
 
-        ```
-        PROJECT_ID=<your-project-id>
-        PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
-        V_MODEL_BUCKET=<model-artifacts-bucket>
-        CLUSTER_NAME=<your-gke-cluster>
-        NAMESPACE=ml-serve
-        KSA=<k8s-service-account>
-        HF_TOKEN=<your-Hugging-Face-account-token>
-        MODEL_ID=<your-model-id>
-        REGION=<your-region>
-        ```
+```
+PROJECT_ID=<your-project-id>
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+V_MODEL_BUCKET=<model-artifacts-bucket>
+CLUSTER_NAME=<your-gke-cluster>
+NAMESPACE=ml-serve
+KSA=<k8s-service-account>
+HF_TOKEN=<your-Hugging-Face-account-token>
+MODEL_ID=<your-model-id>
+REGION=<your-region>
+```
 
 
 
@@ -60,9 +60,9 @@ You can also re-use the cluster from previous fine-tuning and dataprep exercise 
 
 From the CLI connect to the GKE cluster
 
-        ```
-        gcloud container clusters get-credentials ${CLUSTER_NAME} --region $REGION
-        ```
+```
+gcloud container clusters get-credentials ${CLUSTER_NAME} --region $REGION
+```
 
 #### Create a Persistent Disk for the LLM model weights
 
@@ -71,41 +71,46 @@ If you already have LLM model and weights uploaded to a bucket location( as ment
 ##### Upload the model and weights to GCS bucket.
 
 1. Create a GCS bucket in the same region as your GKE cluster.
-        ```
-        gsutil mb gs://${V_MODEL_BUCKET} --region ${REGION}
-        ```
 
-        Grant permission to kubernetes service account in cluster to access the storage bucket to view model weights
-        ```
-        gcloud storage buckets add-iam-policy-binding "gs://$BUCKET_NAME" \
-        --member "principal://iam.googleapis.com/projects/"$PROJECT_NUMBER"/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/$NAMESPACE/sa/$KSA" \
-        --role "roles/storage.objectViewer"
-        ```
-        Update the bucket access level to uniform.
+```
+gsutil mb gs://${V_MODEL_BUCKET} --region ${REGION}
+```
 
-        ```
-        gcloud storage buckets update gs://$BUCKET_NAME --uniform-bucket-level-access
-        ```
+Grant permission to kubernetes service account in cluster to access the storage bucket to view model weights
+
+```
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET_NAME" \
+--member "principal://iam.googleapis.com/projects/"$PROJECT_NUMBER"/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/$NAMESPACE/sa/$KSA" \
+--role "roles/storage.objectViewer"
+```
+
+Update the bucket access level to uniform.
+
+```
+gcloud storage buckets update gs://$BUCKET_NAME --uniform-bucket-level-access
+```
 
 2. Download the model to your local environment. For example, here we are downloading a model from hugging face.
 
-        In your local enviornment, install hugging face hub using pip :
-        ```
-        pip3 install huggingface_hub
-        ```
+In your local enviornment, install hugging face hub using pip :
 
-        Download the model using python3 script:
-        ```
-        python3 serving-yamls/download_model_hugging_face.py
-        ```
-        
-3. Upload the model to the GCS bucket
+```
+pip3 install huggingface_hub
+```
 
-        ```
-        MODEL_ID=<your_model_id> # eg: google/gemma-1.1-7b-it
-        MODEL_ORG="$(dirname "$MODEL_ID")"      
-        gsutil cp -r /tmp/models/$MODEL_ORG/  gs://$BUCKET_NAME
-        ```
+Download the model using python3 script:
+
+```
+python3 serving-yamls/download_model_hugging_face.py
+```
+
+3. Upload the model to the GCS bucket.
+
+```
+MODEL_ID=<your_model_id> # eg: google/gemma-1.1-7b-it
+MODEL_ORG="$(dirname "$MODEL_ID")"      
+gsutil cp -r /tmp/models/$MODEL_ORG/  gs://$BUCKET_NAME
+```
         
 
 
