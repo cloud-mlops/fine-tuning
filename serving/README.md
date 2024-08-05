@@ -70,7 +70,7 @@ If you already have LLM model and weights uploaded to a bucket location( as ment
 
 ##### Upload the model and weights to GCS bucket.
 
-   1. Create a GCS bucket in the same region as your GKE cluster.
+1. Create a GCS bucket in the same region as your GKE cluster.
         ```
         gsutil mb gs://${V_MODEL_BUCKET} --region ${REGION}
         ```
@@ -87,17 +87,19 @@ If you already have LLM model and weights uploaded to a bucket location( as ment
         gcloud storage buckets update gs://$BUCKET_NAME --uniform-bucket-level-access
         ```
 
-   2. Download the model to your local environment. For example, here we are downloading a model from hugging face.
+2. Download the model to your local environment. For example, here we are downloading a model from hugging face.
 
-        In your local enviornment, install hugging face hub using pip and download the model using python3 script:
+        In your local enviornment, install hugging face hub using pip :
         ```
         pip3 install huggingface_hub
         ```
-        <code>
-        python3 serving-yamls/download_model_hugging_face.py
-        </code>
 
-    3. Upload the model to the GCS bucket
+        Download the model using python3 script:
+        ```
+        python3 serving-yamls/download_model_hugging_face.py
+        ```
+        
+3. Upload the model to the GCS bucket
 
         ```
         MODEL_ID=<your_model_id> # eg: google/gemma-1.1-7b-it
