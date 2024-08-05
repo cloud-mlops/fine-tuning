@@ -1,5 +1,7 @@
 # Guide for standalone and distributed inferencing on GKE (Google Kubernetes Engine)
 
+[ Place holder for concept diagram]
+
 There are three common strategies for inference on vLLM:
 
 - Single GPU (no distributed inference)
