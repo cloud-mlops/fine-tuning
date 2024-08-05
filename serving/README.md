@@ -89,13 +89,9 @@ If you already have LLM model and weights uploaded to a bucket location( as ment
 
    2. Download the model to your local environment. For example, here we are downloading a model from hugging face.
 
-        In your local enviornment, install hugging face hub using pip:
+        In your local enviornment, install hugging face hub using pip and download the model using python3 script:
         ```
         pip3 install huggingface_hub
-        ```
-        Download the model using python3
-
-        ```
         python3 serving-yamls/download_model_hugging_face.py
         ```
 
