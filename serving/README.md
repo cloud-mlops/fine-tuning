@@ -1,6 +1,5 @@
 # Guide for standalone and distributed inferencing on GKE (Google Kubernetes Engine)
 
-[ Place holder for concept diagram]
 This exercise assumes you have a fine-tuned model, that we would like to serve on GKE.
 If you have followed the previous steps for dataprep and finetune you would have a model store in the GCS bucket in your GCP Project.
 
@@ -15,6 +14,8 @@ There are three common strategies for inference on vLLM:
 In this guide, you would serve a Gemma large language model (LLM) using graphical processing units (GPUs) on Google Kubernetes Engine (GKE) with the vLLM serving framework with the above mentioned deployment strategies.You can choose to swap the Gemma model with any other fine-tuned or instruction based model for inference on GKE.
 
 By the end of this guide, you should be able to perform the following steps:
+
+                [ Place holder for concept diagram]
 
 1. Prepare your environment with a GKE cluster in Standard mode(using ML playground).
 2. Create a Persistent Disk for the LLM model weights.
@@ -66,11 +67,11 @@ gcloud container clusters get-credentials ${CLUSTER_NAME} --region $REGION
 
 #### Create a Persistent Disk for the LLM model weights
 
-If you already have LLM model and weights uploaded to a bucket location( as mentioned above) then skip this creation of bucket.
+If you already have LLM model and weights uploaded to a bucket location( as mentioned above) then skip creation of bucket.
 
 ##### Upload the model and weights to GCS bucket.
 
-1. Create a GCS bucket in the same region as your GKE cluster.
+Create a GCS bucket in the same region as your GKE cluster.
 
 ```
 gsutil mb gs://${V_MODEL_BUCKET} --region ${REGION}
@@ -90,7 +91,7 @@ Update the bucket access level to uniform.
 gcloud storage buckets update gs://$BUCKET_NAME --uniform-bucket-level-access
 ```
 
-2. Download the model to your local environment. For example, here we are downloading a model from hugging face.
+Download the model to your local environment. For example, here we are downloading a model from hugging face.
 
 In your local enviornment, install hugging face hub using pip :
 
@@ -104,20 +105,13 @@ Download the model using python3 script:
 python3 serving-yamls/download_model_hugging_face.py
 ```
 
-3. Upload the model to the GCS bucket.
+Upload the model to the GCS bucket.
 
 ```
 MODEL_ID=<your_model_id> # eg: google/gemma-1.1-7b-it
 MODEL_ORG="$(dirname "$MODEL_ID")"      
 gsutil cp -r /tmp/models/$MODEL_ORG/  gs://$BUCKET_NAME
 ```
-        
-
-
-   
-
-
-
        
 
 #### Deploy a vLLM container to your cluster.
