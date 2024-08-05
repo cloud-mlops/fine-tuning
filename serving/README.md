@@ -64,13 +64,13 @@ From the CLI connect to the GKE cluster
         gcloud container clusters get-credentials ${CLUSTER_NAME} --region $REGION
         ```
 
-### Create a Persistent Disk for the LLM model weights
+#### Create a Persistent Disk for the LLM model weights
 
 If you already have LLM model and weights uploaded to a bucket location( as mentioned above) then skip this creation of bucket.
 
-#### Upload the model and weights to GCS bucket.
+##### Upload the model and weights to GCS bucket.
 
-1. Create a GCS bucket in the same region as your GKE cluster.
+   1. Create a GCS bucket in the same region as your GKE cluster.
 
         ```
         gsutil mb gs://${V_MODEL_BUCKET} --region ${REGION}
