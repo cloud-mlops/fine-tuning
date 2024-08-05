@@ -92,8 +92,10 @@ If you already have LLM model and weights uploaded to a bucket location( as ment
         In your local enviornment, install hugging face hub using pip and download the model using python3 script:
         ```
         pip3 install huggingface_hub
-        python3 serving-yamls/download_model_hugging_face.py
         ```
+        <code>
+        python3 serving-yamls/download_model_hugging_face.py
+        </code>
 
     3. Upload the model to the GCS bucket
 
