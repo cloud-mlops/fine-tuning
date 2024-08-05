@@ -71,19 +71,17 @@ If you already have LLM model and weights uploaded to a bucket location( as ment
 ##### Upload the model and weights to GCS bucket.
 
    1. Create a GCS bucket in the same region as your GKE cluster.
-
         ```
         gsutil mb gs://${V_MODEL_BUCKET} --region ${REGION}
-       
+        ```
 
         Grant permission to kubernetes service account in cluster to access the storage bucket to view model weights
-
         ```
         gcloud storage buckets add-iam-policy-binding "gs://$BUCKET_NAME" \
         --member "principal://iam.googleapis.com/projects/"$PROJECT_NUMBER"/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/$NAMESPACE/sa/$KSA" \
         --role "roles/storage.objectViewer"
-
         ```
+        Update the bucket access level to uniform.
 
         ```
         gcloud storage buckets update gs://$BUCKET_NAME --uniform-bucket-level-access
