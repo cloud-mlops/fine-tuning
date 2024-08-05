@@ -29,6 +29,9 @@ if "MLFLOW_ENABLE" in os.environ and os.getenv("MLFLOW_ENABLE") == "true":
 
     mlflow.set_experiment(experiment)
     mlflow.autolog()
+    mlflow.system_metrics.set_system_metrics_node_id(
+        os.getenv("JOB_COMPLETION_INDEX", "0")
+    )
 
 accelerator = Accelerator()
 
