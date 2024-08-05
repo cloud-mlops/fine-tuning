@@ -1,6 +1,16 @@
 # Guide for standalone and distributed inferencing on GKE (Google Kubernetes Engine)
 
 [ Place holder for concept diagram]
+This exercise assumes you have a fine-tuned model, that we would like to serve on GKE.
+If you have followed the previous steps for dataprep and finetune you would have a model store in the GCS bucket in your GCP Project.
+
+### Prerequisites
+1. The ML Platform Playground must be deployed
+2. Data Set output from the [Data Preparation example](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/datapreparation/gemma-it)
+3. Fine tune or other model available ready to be served.If you have been following the [fine tuning exercise with gemma model](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch), a model artifact would be availble to use in [your model artifacts GCS bucket](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch)
+
+
+### A quick brief on Inference on VLLM.
 
 There are three common strategies for inference on vLLM:
 
@@ -13,44 +23,15 @@ In this guide, you would serve a Gemma large language model (LLM) using graphica
 By the end of this guide, you should be able to perform the following steps:
 
 1. Prepare your environment with a GKE cluster in Standard mode(using ML playground).
-2. Deploy a vLLM container to your cluster.
+2. Deploy a vLLM container to your cluster to host your model.
 3. Use vLLM to serve the Gemma7B model through curl and a web chat interface.
 4. View Production metrics for your model serving on GKE
+5. Use custom metrics and HPA to scale your model deployments( instances ) on GKE.
 
 ## Single GPU (no distributed inference)
 
 If your model fits in a single GPU, you probably don’t need to use distributed inference. Just use the single GPU to run the inference.
-
-
-
-#### Prepare your environment with a GKE cluster in Standard mode.
-
-Follow along the steps provide in this READme to create a playground cluster for ML platform on GKE.
-        https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/platform/playground
-
-#### Deploy a vLLM container to your cluster.
-
-Create a Kubernetes secret for Hugging Face credentials
-Deploy the vLLM container to serve the Gemma model you want to use.
-
-#### Use vLLM to serve the Gemma7B model through curl and a web chat interface.
-
-Serve the model
-
-#### Production Metrics
-vLLM exposes a number of metrics that can be used to monitor the health of the system. These metrics are exposed via the /metrics endpoint on the vLLM OpenAI compatible API server.
-
-The following metrics are exposed:
-
-```
-
-
-```
-
-#### Custom metrics for Single GPU Deployment.
-
-
-
+You can follow the steps similiar to the Single-Node Multi-GPU (tensor parallel inference)
 
 ## Single-Node Multi-GPU (tensor parallel inference):
 
