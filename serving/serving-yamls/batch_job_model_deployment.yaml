@@ -2,11 +2,11 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   generateName: vllm-job-pvc-
-  namespace: default
+  namespace: _NAMESPACE_  # replace with your namespace
   labels:
-    app: vllm-job
-    case-name: pvc-$(MODEL_NAME)-1024g
-    model: $(MODEL_ID)
+    app: vllm-job-pvc
+    case-name: pvc-model-1024g
+    model: _MODEL_NAME_  # replace with your model id
 spec:
   activeDeadlineSeconds: 7200
   backoffLimit: 6
@@ -17,11 +17,11 @@ spec:
   template:
     metadata:
       labels:
-        app: vllm-job
+        app: vllm-job-pvc
     spec:
       containers:
       - args:
-        - --model=$(MODEL_ID)
+        - --model=_MODEL_ID_
         - --tensor-parallel-size=2
         command:
         - python
@@ -29,9 +29,9 @@ spec:
         - vllm.entrypoints.api_server
         env:
         - name: RUN_NAME
-          value: PVC_$(MODEL_NAME)
+          value:  _MODEL_NAME_
         - name: MODEL_ID
-          value: /data/models/$(MODEL_ID)
+          value: /data/models/_MODEL_ID_
         image: us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01
         imagePullPolicy: IfNotPresent
         name: inference-server
@@ -55,7 +55,7 @@ spec:
           name: model-weights
       dnsPolicy: ClusterFirst
       nodeSelector:
-        cloud.google.com/gke-accelerator: $(ACCELERATOR_TYPE)
+        cloud.google.com/gke-accelerator: _ACCELERATOR_TYPE_
       restartPolicy: Never
       schedulerName: default-scheduler
       tolerations:
@@ -72,5 +72,5 @@ spec:
         name: dshm
       - name: model-weights
         persistentVolumeClaim:
-          claimName: $(PVC_CLAIM_NAME_DISK_IMAGE)
+          claimName: pvc-model-weights-claim-1024gb-zone-a-ro
           readOnly: true

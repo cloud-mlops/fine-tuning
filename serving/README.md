@@ -125,13 +125,69 @@ gsutil cp -r /tmp/models/$MODEL_ORG/  gs://$V_MODEL_BUCKET
 
 ##### Create PV, PVC and Persistent disk.
 
+Loading model weights from Persistent Volume is one of solutions to load models faster on GKE cluster. In GKE, Persistent Volumes backed by GCP Persistent Disks can be mounted read-only simultaneously  by multiple nodes(ReadOnlyMany), this makes multiple pods access the model weights possible. 
+
+1. Create a PVC for the model weights
+
+```
+kubectl apply -f serving-yamls/pvc_disk_image.yaml
+```
+
+2. Create a job downloading the models to the volume and review logs for successful completion.
+
+```
+sed -i -e "s|_YOUR_BUCKET_NAME_|${V_MODEL_BUCKET}|" serving-yamls/batch_job_download_model_on_pv_volume.yaml
+kubectl create -f serving-yamls/batch_job_download_model_on_pv_volume.yaml
+kubectl logs  module-download-job-ptdpt-6cq8r
+```
+
+3. Create the PV and PVC
+
+```
+PV_NAME="$(kubectl get pvc/block-pvc-model -o jsonpath='{.spec.volumeName}')"
+```
+
+```
+DISK_REF="$(kubectl get pv "$PV_NAME"  -o jsonpath='{.spec.csi.volumeHandle}')"
+```
+
+```
+gcloud compute images create model-weights-image-1 --source-disk="$DISK_REF"
+```
+
+```
+gcloud compute disks create models-disk-gemma-7b  --size=1TiB --type=pd-ssd --zone=us-west1-a --image=model-weights-image-1
+```
+
+```
+sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/pv_and_pvc.yaml
+kubectl apply -f serving-yamls/pv_and_pvc.yaml
+```
 
        
 #### Deploy a vLLM container to your cluster.
 
-Deploy the vLLM container to serve the Gemma model you want to use.
+Run the batch job to deploy model using persistent disk on GKE.
+
+```
+MODEL_ID=<your_model_id> # eg: google/gemma-1.1-7b-it
+NAMESPACE=<your-inference-namespace>
+MODEL_NAME=<your_mode_name> # eg: gemma7b
+ACCELERATOR_TYPE=<gpu-accelerator-type> #e.g nvidia-l4
+
+sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/batch_job_model_deployment.yaml
+sed -i -e "s|_MODEL_ID_|${MODEL_ID}|" serving-yamls/batch_job_model_deployment.yaml
+sed -i -e "s|_MODEL_NAME_|${MODEL_NAME}|" serving-yamls/batch_job_model_deployment.yaml
+sed -i -e "s|_ACCELERATOR_TYPE_|${ACCELERATOR_TYPE}|" serving-yamls/batch_job_model_deployment.yaml
+
+```
 
 
+```
+kubectl create -f serving-yamls/batch_job_model_deployment.yaml
+kubectl describe jobs vllm-job-pvc- -n ${NAMESPACE}
+kubectl describe pods vllm-job-pvc- -n ${NAMESPACE}
+```
 
 #### Use vLLM to serve the Gemma7B model through curl and a web chat interface.
 

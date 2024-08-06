@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: model-weight-disk-1024gb-zone-a
+  name: model-weights-disk-1024gb-zone-a
   labels:
     pv-usage: model-weights
     pv-spec: ssd-1024G
@@ -13,7 +13,7 @@ spec:
     - ReadWriteOnce
   csi:
     driver: pd.csi.storage.gke.io
-    volumeHandle: projects/gkebatchexpce3c8dcb/zones/us-east4-c/disks/models-disk-gemma2-a100-experiment-a2aa2c3it1
+    volumeHandle: projects/gkebatchexpce3c8dcb/zones/us-west1-a/disks/model-weights-image-1
     fsType: ext4
     readOnly: true
   nodeAffinity:
@@ -23,14 +23,15 @@ spec:
         - key: topology.gke.io/zone
           operator: In
           values:
-          - us-central1-a
+          - us-west1-a
   mountOptions:
   - read_ahead_kb=4096
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pvc-model-weight-disk-1024gb-ro
+  name: pvc-model-weights-claim-1024gb-zone-a-ro
+  namespace: _NAMESPACE_  # replace with your namespace
 spec:
   storageClassName: ""
   accessModes:
@@ -42,4 +43,3 @@ spec:
     matchLabels:
       pv-usage: model-weights
       pv-spec: ssd-1024G
-
