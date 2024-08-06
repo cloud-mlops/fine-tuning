@@ -17,7 +17,7 @@ By the end of this guide, you should be able to perform the following steps:
 
                 [ Place holder for concept diagram]
 
-1. Prepare your environment with a GKE cluster in Standard mode(using ML playground).
+1. Prepare your ML Platform [Playground]( https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/platform/playground).
 2. Create a Persistent Disk for the LLM model weights.
 2. Deploy a vLLM container to your cluster to host your model.
 3. Use vLLM to serve the Gemma7B model through curl and a web chat interface.
@@ -27,11 +27,11 @@ By the end of this guide, you should be able to perform the following steps:
 ### Prerequisites
 1. The ML Platform [Playground]( https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/platform/playground) must be deployed
 2. Data Set output from the [Data Preparation example](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/datapreparation/gemma-it)
-3. Fine tune or other model available ready to be served.If you have been following the [fine tuning exercise with gemma model](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch), a model artifact would be availble to use in [your model artifacts GCS bucket](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch)
+3. Fine tune or other model available ready to be served.If you have been following the [fine tuning exercise with gemma model](https://<github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch), a model artifact would be availble to use in [your model artifacts GCS bucket](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch)
 4. Set these Enviorment variables.
 
 ```
-PROJECT_ID=<your-project-id>
+PROJECT_ID=your-project-id>
 PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
 V_MODEL_BUCKET=<model-artifacts-bucket>
 CLUSTER_NAME=<your-gke-cluster>
@@ -40,9 +40,9 @@ KSA=<k8s-service-account>
 HF_TOKEN=<your-Hugging-Face-account-token>
 MODEL_ID=<your-model-id>
 REGION=<your-region>
+IMAGE_NAME=<your-image-name>
+DISK_NAME=<your-disk-name>
 ```
-
-
 
 ## Single GPU (no distributed inference)
 
@@ -65,22 +65,30 @@ From the CLI connect to the GKE cluster
 gcloud container clusters get-credentials ${CLUSTER_NAME} --region $REGION
 ```
 
+```
+kubectl create ns ${NAMESPACE}
+```
+
+```
+kubectl create sa ${KSA} -n ${NAMESPACE}
+```
+
 #### Create a Persistent Disk for the LLM model weights
 
 If you already have LLM model and weights uploaded to a bucket location( as mentioned above) then skip creation of bucket.
 
-##### Upload the model and weights to GCS bucket.
+##### Optional :  Upload the model and weights to GCS bucket.
 
 Create a GCS bucket in the same region as your GKE cluster.
 
 ```
-gsutil mb gs://${V_MODEL_BUCKET} --region ${REGION}
+gcloud storage buckets create gs://${V_MODEL_BUCKET} --location ${REGION}
 ```
 
 Grant permission to kubernetes service account in cluster to access the storage bucket to view model weights
 
 ```
-gcloud storage buckets add-iam-policy-binding "gs://$BUCKET_NAME" \
+gcloud storage buckets add-iam-policy-binding "gs://$V_MODEL_BUCKET" \
 --member "principal://iam.googleapis.com/projects/"$PROJECT_NUMBER"/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/$NAMESPACE/sa/$KSA" \
 --role "roles/storage.objectViewer"
 ```
@@ -88,7 +96,7 @@ gcloud storage buckets add-iam-policy-binding "gs://$BUCKET_NAME" \
 Update the bucket access level to uniform.
 
 ```
-gcloud storage buckets update gs://$BUCKET_NAME --uniform-bucket-level-access
+gcloud storage buckets update "gs://$V_MODEL_BUCKET"  --uniform-bucket-level-access
 ```
 
 Download the model to your local environment. For example, here we are downloading a model from hugging face.
@@ -99,7 +107,9 @@ In your local enviornment, install hugging face hub using pip :
 pip3 install huggingface_hub
 ```
 
-Download the model using python3 script:
+Download the model using python3 script.:
+
+Note: The model_id that you provided in the script will be downloaded locally to your /tmp/models folder.
 
 ```
 python3 serving-yamls/download_model_hugging_face.py
@@ -110,14 +120,18 @@ Upload the model to the GCS bucket.
 ```
 MODEL_ID=<your_model_id> # eg: google/gemma-1.1-7b-it
 MODEL_ORG="$(dirname "$MODEL_ID")"      
-gsutil cp -r /tmp/models/$MODEL_ORG/  gs://$BUCKET_NAME
+gsutil cp -r /tmp/models/$MODEL_ORG/  gs://$V_MODEL_BUCKET
 ```
-       
 
+##### Create PV, PVC and Persistent disk.
+
+
+       
 #### Deploy a vLLM container to your cluster.
 
-Create a Kubernetes secret for Hugging Face credentials
 Deploy the vLLM container to serve the Gemma model you want to use.
+
+
 
 #### Use vLLM to serve the Gemma7B model through curl and a web chat interface.
 
