@@ -13,7 +13,7 @@ spec:
     - ReadWriteOnce
   csi:
     driver: pd.csi.storage.gke.io
-    volumeHandle: projects/gkebatchexpce3c8dcb/zones/us-west1-a/disks/model-weights-image-1
+    volumeHandle: projects/gkebatchexpce3c8dcb/zones/us-west1-a/disks/models-disk-gemma-7b
     fsType: ext4
     readOnly: true
   nodeAffinity:

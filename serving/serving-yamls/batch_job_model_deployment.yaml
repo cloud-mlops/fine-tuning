@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
       - args:
-        - --model=_MODEL_ID_
+        - --model=$(MODEL_ID)
         - --tensor-parallel-size=2
         command:
         - python
