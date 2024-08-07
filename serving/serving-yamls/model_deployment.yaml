@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: _NAMESPACE_  # replace with your namespace
+  labels:
+    app: vllm-openai
+    case-name: pvc-model-1024g
+    model: _MODEL_NAME_  # replace with your model name
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-openai
+  template:
+    metadata:
+      labels:
+        app: vllm-openai
+    spec:
+      containers:
+      - name: inference-server
+        image: us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: "2"
+            memory: "25Gi"
+            ephemeral-storage: "25Gi"
+            nvidia.com/gpu: "2"
+          limits:
+            cpu: "2"
+            memory: "25Gi"
+            ephemeral-storage: "25Gi"
+            nvidia.com/gpu: "2"
+        args:
+        - --model=$(MODEL_ID)
+        - --tensor-parallel-size=2
+        command:
+        - python
+        - -m
+        - vllm.entrypoints.api_server
+        env:
+        - name: RUN_NAME
+          value: _MODEL_NAME_
+        - name: MODEL_ID
+          value: /data/models/_MODEL_ID_
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        - name: model-weights
+          mountPath: /data/models
+          readOnly: true          
+      volumes:
+      - name: dshm
+        emptyDir:
+            medium: Memory
+      - name: model-weights
+        persistentVolumeClaim:
+          claimName: pvc-model-weights-claim-1024gb-zone-a-ro
+          readOnly: true                  
+      nodeSelector:
+        cloud.google.com/gke-accelerator: _ACCELERATOR_TYPE_
+        topology.gke.io/zone: us-west1-a
+      tolerations:
+      - key: "on-demand"
+        value: "true"
+        operator: "Equal"
+        effect: "NoSchedule"
+      - key: "nvidia/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-openai
+spec:
+  selector:
+    app: vllm-openai
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000

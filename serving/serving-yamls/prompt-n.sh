@@ -1,6 +1,6 @@
 USER_PROMPT="I'm looking for comfortable cycling shorts for women, what are some good options?"
 
-curl -X POST http://localhost:8000/generate \
+curl -X POST http://34.118.226.165:8000/generate \
   -H "Content-Type: application/json" \
   -d @- <<EOF #| jq -r .predictions[0]
 {

@@ -182,12 +182,18 @@ sed -i -e "s|_ACCELERATOR_TYPE_|${ACCELERATOR_TYPE}|" serving-yamls/batch_job_mo
 
 ```
 
+```
+kubectl create -f serving-yamls/model_deployment.yaml
+kubectl describe pods vllm-openai-<replace-the-pod-name> -n ${NAMESPACE}
+```
 
 ```
-kubectl create -f serving-yamls/batch_job_model_deployment.yaml
-kubectl describe jobs vllm-job-pvc- -n ${NAMESPACE}
-kubectl describe pods vllm-job-pvc- -n ${NAMESPACE}
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
+
 
 #### Use vLLM to serve the Gemma7B model through curl and a web chat interface.
 
