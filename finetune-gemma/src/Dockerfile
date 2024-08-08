@@ -5,6 +5,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY fine_tune.py \
+    fine_tune_llama3.py \
     fsdp_config.yaml \
     requirements.txt \
     logging.conf \
