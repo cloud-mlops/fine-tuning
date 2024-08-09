@@ -64,7 +64,7 @@ spec:
         - name: MODEL_NAME
           value: "V_MODEL_NAME"
         - name: NEW_MODEL
-          value: "gemma-2-9b-it-chatbot-J_ID"
+          value: "llama-3.1-8b-it-chatbot-J_ID"
         - name: MODEL_PATH
           value: "V_MODEL_PATH"
         - name: NCCL_DEBUG
@@ -87,6 +87,10 @@ spec:
           value: "V_WARMUP_RATIO"
         - name: MAX_SEQ_LENGTH
           value: "V_MAX_SEQ_LENGTH"
+        - name: TRAIN_BATCH_SIZE
+          value: "V_TRAIN_BATCH_SIZE"
+        - name: GRADIENT_ACCUMULATION_STEPS
+          value: "V_GRADIENT_ACCUMULATION_STEPS"          
         - name: HF_TOKEN
           valueFrom:
             secretKeyRef:

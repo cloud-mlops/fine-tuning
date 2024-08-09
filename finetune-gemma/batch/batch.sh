@@ -57,6 +57,8 @@ do
         -e s/V_TRAINING_DATASET_BUCKET/${HP_TRAINING_DATASET_BUCKET}/g \
         -e s,V_TRAINING_DATASET_PATH,/${HP_TRAINING_DATASET_PATH}/training,g \
         -e s,V_MODEL_PATH,/${HP_MODEL_PATH}-${JOB_ID},g \
+        -e s/V_TRAIN_BATCH_SIZE/${V_TRAIN_BATCH_SIZE[IDX]}/g \
+        -e s/V_GRADIENT_ACCUMULATION_STEPS/${V_GRADIENT_ACCUMULATION_STEPS[IDX]}/g \
         ${FILE}.yaml > ${FILE}-${JOB_ID}.yaml
     kubectl apply -f ${FILE}-${JOB_ID}.yaml -n ml-team
 done
