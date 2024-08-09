@@ -146,7 +146,7 @@ packing = False
 
 # Load base model
 model = AutoModelForCausalLM.from_pretrained(
-    attn_implementation="eager",
+    attn_implementation="flash_attention_2",
     pretrained_model_name_or_path=model_name,
     torch_dtype=torch.bfloat16,
 )
@@ -208,7 +208,6 @@ trainer = SFTTrainer(
     train_dataset=input_data,
     tokenizer=tokenizer,
     peft_config=peft_config,
-    data_collator=collator,
 )
 
 logger.info("Fine tuning started")
