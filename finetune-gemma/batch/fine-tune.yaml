@@ -47,7 +47,7 @@ spec:
             --machine_rank ${JOB_COMPLETION_INDEX} \
             --num_processes 2 \
             --num_machines 1 \
-            fine_tune.py
+            fine_tune_llama3.py
         env:
         - name: "EXPERIMENT"
           value: "V_EXPERIMENT"
