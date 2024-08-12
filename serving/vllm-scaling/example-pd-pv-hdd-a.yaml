@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: kh-models-disk-1024gb-zone-hdd-a-1
+  namespace: ml-team
+  labels:
+    user: kh
+    pv-usage: model-cache-hdd-1
+    pv-spec: hdd-1024G
+    pv-zone: us-east4-a
+spec:
+  storageClassName: ""
+  capacity:
+    storage: 1024Gi
+  accessModes:
+  - ReadOnlyMany
+  csi:
+    driver: pd.csi.storage.gke.io
+    volumeHandle: projects/gkebatchexpce3c8dcb/zones/us-east4-a/disks/gemma2-9b-ft-hdd
+    fsType: ext4
+    readOnly: true
+  mountOptions:
+  - read_ahead_kb=4096
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: topology.gke.io/zone
+          operator: In
+          values:
+          - us-east4-a
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-model-weight-disk-1024gb-hdd-a-ro
+  namespace: ml-team
+spec:
+  storageClassName: ""
+  accessModes:
+  - ReadOnlyMany
+  resources:
+    requests:
+      storage: 1024Gi
+  selector:
+    matchLabels:
+      user: kh
+      pv-usage: model-cache-hdd-1
+      pv-spec: hdd-1024G
+      pv-zone: us-east4-a
