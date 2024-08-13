@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: model-eval
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app: model-eval-job
+    spec:
+      serviceAccountName: ray-worker
+      containers:
+      - name: job
+        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/validate:v1.0.1
+        imagePullPolicy: Always
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          ACTION=predict python validate_fine_tuned_model.py
+          ACTION=accuracy python validate_fine_tuned_model.py
+        env:
+        - name: "ENDPOINT"
+          value: "http://vllm-openai-b24:8000/v1/chat/completions"
+        - name: "MODEL_PATH"
+          value: "/model-data/model-llama3-a100/experiment-job1-b24"
+        - name: "DATASET_OUTPUT_PATH"
+          value: "dataset/output-a2aa2c3"
+        - name: "BUCKET"
+          value: "kh-finetune-ds"
+        resources:
+          requests:
+            cpu: "2"
+            memory: "5Gi"
+          limits:
+            cpu: "2"
+            memory: "5Gi"
+      restartPolicy: Never
