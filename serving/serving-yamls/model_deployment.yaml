@@ -1,11 +1,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: vllm-openai
   namespace: _NAMESPACE_  # replace with your namespace
-  labels:
-    app: vllm-openai
-    case-name: pvc-model-1024g
-    model: _MODEL_NAME_  # replace with your model name
 spec:
   replicas: 1
   selector:
@@ -16,10 +13,10 @@ spec:
       labels:
         app: vllm-openai
     spec:
+      serviceAccountName: default
       containers:
       - name: inference-server
-        image: us-docker.pkg.dev/vertex-ai/vertex-vision-model-garden-dockers/pytorch-vllm-serve:20240220_0936_RC01
-        imagePullPolicy: IfNotPresent
+        image: vllm/vllm-openai:v0.5.3.post1
         resources:
           requests:
             cpu: "2"
@@ -32,47 +29,44 @@ spec:
             ephemeral-storage: "25Gi"
             nvidia.com/gpu: "2"
         args:
-        - --model=$(MODEL_ID)
+        - --model=$(MODEL)
         - --tensor-parallel-size=2
-        command:
-        - python
-        - -m
-        - vllm.entrypoints.api_server
         env:
-        - name: RUN_NAME
-          value: _MODEL_NAME_
-        - name: MODEL_ID
-          value: /data/models/_MODEL_ID_
+        - name: MODEL
+          value: /data/models/model-gemma2-a100/experiment-a2aa2c3it1
+        - name: VLLM_ATTENTION_BACKEND
+          value: FLASHINFER
         volumeMounts:
         - mountPath: /dev/shm
           name: dshm
-        - name: model-weights
+        - name: model-disk
           mountPath: /data/models
-          readOnly: true          
+          readOnly: true
       volumes:
       - name: dshm
         emptyDir:
             medium: Memory
-      - name: model-weights
+      - name: model-disk
         persistentVolumeClaim:
           claimName: pvc-model-weights-claim-1024gb-zone-a-ro
-          readOnly: true                  
-      nodeSelector:
-        cloud.google.com/gke-accelerator: _ACCELERATOR_TYPE_
-        topology.gke.io/zone: us-west1-a
+          readOnly: true
       tolerations:
-      - key: "on-demand"
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "cloud.google.com/gke-queued"
         value: "true"
         operator: "Equal"
         effect: "NoSchedule"
-      - key: "nvidia/gpu"
-        operator: "Exists"
-        effect: "NoSchedule"
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-l4
+        pool-type: l4-2-sb
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: vllm-openai
+  namespace: _NAMESPACE_  # replace with your namespace
 spec:
   selector:
     app: vllm-openai

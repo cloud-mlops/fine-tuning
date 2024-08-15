@@ -28,11 +28,11 @@ spec:
         - name: CONTEXT_PATH
           value: "/generate"
         - name: HOST
-          value: "http://vllm-service:8000"
+          value: "http://vllm-openai-service:8000"
         - name: LLM_ENGINE
-          value: "vllm"
+          value: "openai-chat"
         - name: MODEL_ID
-          value: "gemma"
+          value: "gemma/gemma-7b"
         - name: USER_PROMPT
           value: "<start_of_turn>user\nprompt<end_of_turn>\n"
         - name: SYSTEM_PROMPT

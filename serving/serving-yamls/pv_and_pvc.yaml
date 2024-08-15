@@ -13,7 +13,7 @@ spec:
     - ReadWriteOnce
   csi:
     driver: pd.csi.storage.gke.io
-    volumeHandle: projects/gkebatchexpce3c8dcb/zones/us-west1-a/disks/models-disk-gemma-7b
+    volumeHandle: projects/gkebatchexpce3c8dcb/zones/us-east4-a/disks/models-fine-tune-disk-v1
     fsType: ext4
     readOnly: true
   nodeAffinity:
@@ -23,7 +23,7 @@ spec:
         - key: topology.gke.io/zone
           operator: In
           values:
-          - us-west1-a
+          - us-east4-a
   mountOptions:
   - read_ahead_kb=4096
 ---
@@ -31,7 +31,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pvc-model-weights-claim-1024gb-zone-a-ro
-  namespace: _NAMESPACE_  # replace with your namespace
+  namespace:  _NAMESPACE_  # replace with your namespace
 spec:
   storageClassName: ""
   accessModes:
