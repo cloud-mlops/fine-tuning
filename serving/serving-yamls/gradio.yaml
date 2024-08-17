@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gradio
+  namespace: _NAMESPACE_  # replace with your namespace
   labels:
     app: gradio
 spec:
@@ -26,13 +27,15 @@ spec:
             memory: "512Mi"
         env:
         - name: CONTEXT_PATH
-          value: "/generate"
+          value: "/v1/chat/completions"
         - name: HOST
-          value: "http://vllm-openai-service:8000"
+          value: "http://vllm-openai:8000"
+        - name: DISABLE_SYSTEM_MESSAGE
+          value: "true"
         - name: LLM_ENGINE
-          value: "openai-chat"
+          value: "openai"
         - name: MODEL_ID
-          value: "gemma/gemma-7b"
+          value: "/data/models/model-gemma2-a100/experiment-a2aa2c3it1"
         - name: USER_PROMPT
           value: "<start_of_turn>user\nprompt<end_of_turn>\n"
         - name: SYSTEM_PROMPT
@@ -44,6 +47,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: gradio
+  namespace: ml-serve  # replace with your namespace
 spec:
   selector:
     app: gradio

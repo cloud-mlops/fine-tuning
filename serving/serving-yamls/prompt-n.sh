@@ -1,14 +1,16 @@
+# Replace USER_PROMPT and URL with your own values.
+# model: folder location of the model in the deployed LLM pod
+
 USER_PROMPT="I'm looking for comfortable cycling shorts for women, what are some good options?"
 
-curl -X POST http://34.118.226.165:8000/generate \
-  -H "Content-Type: application/json" \
-  -d @- <<EOF #| jq -r .predictions[0]
-{
-    "prompt": "<start_of_turn>user\n${USER_PROMPT}<end_of_turn>\n<start_of_turn>model\n",
-    "temperature": 0.70,
-    "top_p": 1.0,
-    "top_k": 1.0,
-    "max_tokens": 256
-}
-EOF
-#    "prompt": "<start_of_turn>user\n${USER_PROMPT}<end_of_turn>\n",
+curl http://vllm-openai:8000/v1/chat/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "/data/models/model-gemma2-a100/experiment-a2aa2c3it1",
+        "messages": [
+            {"role": "user", "content": "${USER_PROMPT}"}],
+             "temperature": 0.70,
+             "top_p": 1.0,
+             "top_k": 1.0,
+             "max_tokens": 256
+    }'
