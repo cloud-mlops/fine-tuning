@@ -11,7 +11,7 @@ There are three common strategies for inference on vLLM:
 - Single-Node Multi-GPU (tensor parallel inference)
 - Multi-Node Multi-GPU 
 
-In this guide, you would serve a Gemma large language model (LLM) using graphical processing units (GPUs) on Google Kubernetes Engine (GKE) with the vLLM serving framework with the above mentioned deployment strategies.You can choose to swap the Gemma model with any other fine-tuned or instruction based model for inference on GKE.
+In this guide, you would serve a fine-tuned Gemma large language model (LLM) using graphical processing units (GPUs) on Google Kubernetes Engine (GKE) with the vLLM serving framework with the above mentioned deployment strategies.You can choose to swap the Gemma model with any other fine-tuned or instruction based model for inference on GKE.
 
 By the end of this guide, you should be able to perform the following steps:
 
@@ -198,20 +198,133 @@ INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 ```
 
 
-#### Use vLLM to serve the Gemma7B model through curl and a web chat interface.
+#### Serve the deployed model through curl and a web chat interface.
 
-Serve the model
+You can run curl commands to test prompts for your LLM
+
+ssh into the LLM pod 
+
+```
+kubectl exec -it vllm-openai-<your-pod-name> -n ml-serve -- bash
+```
+
+Run the curl prompt with your values
+
+```
+./servimg-yamls/prompt-n.sh
+```
+
+Optional : You can also deploy gradio chat interface to view the model chat interface.
+
+```
+sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/gradio.yaml
+kubectl apply -f serving-yamls/gradio.yaml
+```
 
 #### Production Metrics
 vLLM exposes a number of metrics that can be used to monitor the health of the system. These metrics are exposed via the /metrics endpoint on the vLLM OpenAI compatible API server.
 
-The following metrics are exposed:
+
+```
+kubectl exec -it vllm-openai-6cdc44d69-hrlkz -n ml-serve -- bash
+curl http://vllm-openai:8000/metrics
+```
+
+#### View Production metrics for your model serving on GKE
+
+You can configure monitoring of the metrics above using the [pod monitoring](https://cloud.google.com/stackdriver/docs/managed-prometheus/setup-managed#gmp-pod-monitoring)
+
+```
+kubectl apply -f serving-yamls/pod_monitoring.yaml
+```
+
+### Run Batch inference on GKE
+
+Once a model has completed fine-tuning and deployed on GKE , its ready to run batch Inference pipeline.
+In this example batch inference pipeline, we would first send prompts to the hosted fine-tuned model and then validate the results based on ground truth.
+
+#### Prepare your environment
+
+Create Service account with work-load identity enabled.
+
+NAMESPACE=ml-serve
+kubectl create sa ${KSA} -n ${NAMESPACE}
+
+
+Set env variables.
+
+```
+PROJECT_ID=<your-project-id>
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+CLUSTER_NAME=<your-gke-cluster>
+NAMESPACE=ml-serve
+DOCKER_IMAGE_URL=us-docker.pkg.dev/${PROJECT_ID}/llm-batch-inference/validate:v1.0.0
+MODEL_PATH=<your-model-path>
+BUCKET="<Your dataset bucket name>"
+DATASET_OUTPUT_PATH=""
+ENDPOINT=<your-endpoint> # eg "http://vllm-openai:8000/v1/chat/completions"
+KSA=<k8s-service-account> # Service account with work-load identity enabled
+```
+
+```
+sed -i -e "s|IMAGE_URL|${DOCKER_IMAGE_URL}|" \
+    -i -e "s|KSA|${KSA}|" \
+    -i -e "s|V_BUCKET|${BUCKET}|" \
+    -i -e "s|V_MODEL_PATH|${MODEL_PATH}|" \
+    -i -e "s|V_DATASET_OUTPUT_PATH|${DATASET_OUTPUT_PATH}|" \
+    -i -e "s|V_ENDPOINT|${ENDPOINT}|" \
+    model-eval.yaml
+```
+
+#### Build the image of the source and execute batch inference job
+
+Create Artifact Registry repository for your docker image
+
+```
+gcloud artifacts repositories create llm-finetuning \
+    --repository-format=docker \
+    --location=us \
+    --project=${PROJECT_ID} \
+    --async
 
 ```
 
+Enable the Cloud Build APIs
 
 ```
+gcloud services enable cloudbuild.googleapis.com --project ${PROJECT_ID}
+```
 
-#### Custom metrics for Single GPU Deployment.
+Build container image using Cloud Build and push the image to Artifact Registry Modify cloudbuild.yaml to specify the image url
+
+sed -i "s|IMAGE_URL|${DOCKER_IMAGE_URL}|" cloudbuild.yaml && \
+gcloud builds submit . --project ${PROJECT_ID}
+
+Get credentials for the GKE cluster
+
+```
+gcloud container fleet memberships get-credentials ${CLUSTER_NAME} --project ${PROJECT_ID}
+```
+
+Create the Job in the ml-team namespace using kubectl command
+
+```
+kubectl apply -f model-eval.yaml -n ml-team
+```
+
+### Run Benchmarks for inference
+
+
+## Inference at Scale 
+
+#### Single-Node Multi-GPU (tensor parallel inference):
+
+
+#### Multi-Node Multi-GPU scale
+
+
+
+
+
 
 
