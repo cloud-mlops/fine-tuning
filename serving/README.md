@@ -246,7 +246,6 @@ In this example batch inference pipeline, we would first send prompts to the hos
 #### Prepare your environment
 
 
-
 Set env variables.
 
 ```
@@ -261,20 +260,26 @@ ENDPOINT=<your-endpoint> # eg "http://vllm-openai:8000/v1/chat/completions"
 KSA=<k8s-service-account> # Service account with work-load identity enabled
 ```
 
-Create Service account .
+Create Service account.
 
+```
 NAMESPACE=ml-serve
 kubectl create sa ${KSA} -n ${NAMESPACE}
+```
 
 Setup Workload Identity Federation access to read/write to the bucket for the inference batch data set
 
+```
 gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
     --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
     --role "roles/storage.objectUser"
+```
 
+```
 gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
     --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
     --role "roles/storage.legacyBucketWriter"
+```
 
 #### Build the image of the source and execute batch inference job
 
@@ -331,17 +336,35 @@ kubectl apply -f model-eval.yaml -n ${NAMESPACE}
 ```
 
 You can review predictions result in file named `predictions.txt` .Sample file has been added to the repository.
-The job will take approx 45 mins to execute
+The job will take approx 45 mins to execute.
 
 ### Run Benchmarks for inference
 
+The model is ready to run the benchmarks for inference job. We can run few performance tests using locust.
+Locust is an open source performance/load testing tool for HTTP and other protocols.
+You can refer to the documentation to [set up](https://docs.locust.io/en/stable/installation.html) locust locally or deploy as a container on GKE.
 
-## Inference at Scale 
+We have created a sample [locustfile](https://docs.locust.io/en/stable/writing-a-locustfile.html) to run tests against our model using sample prompts which we tried earlier in the exercise.
+Here is a sample ![graph](../benchmarks/locustfile.jpg)] to review.
 
-#### Single-Node Multi-GPU (tensor parallel inference):
+If you have a local set up for locust. You can execute the tests using following :
 
 
-#### Multi-Node Multi-GPU scale
+```
+cd benchmarks
+$locust
+```
+
+You can update the service end point of model to LoadBalancer(type) to ensure you can reach the hosted model's endpoint outside the ml-serve namespace . You can access the model endpoint using correct [annotation](https://cloud.google.com/kubernetes-engine/docs/concepts/service-load-balancer#load_balancer_types)
+
+
+
+
+
+
+
+
+
 
 
 
