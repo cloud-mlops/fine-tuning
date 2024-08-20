@@ -381,7 +381,7 @@ Locust is an open source performance/load testing tool for HTTP and other protoc
 You can refer to the documentation to [set up](https://docs.locust.io/en/stable/installation.html) locust locally or deploy as a container on GKE.
 
 We have created a sample [locustfile](https://docs.locust.io/en/stable/writing-a-locustfile.html) to run tests against our model using sample prompts which we tried earlier in the exercise.
-Here is a sample ![graph](../benchmarks/locustfile.jpg) to review.
+Here is a sample ![graph](./serving-yamls/benchmarks/locust.py) to review.
 
 If you have a local set up for locust. You can execute the tests using following :
 
