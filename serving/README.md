@@ -238,6 +238,42 @@ You can configure monitoring of the metrics above using the [pod monitoring](htt
 kubectl apply -f serving-yamls/pod_monitoring.yaml
 ```
 
+#### Import the vLLM metrics into cloud monitoring.
+
+
+Cloud Monitoring provides an [importer](https://cloud.google.com/monitoring/dashboards/import-grafana-dashboards) that you can use to import dashboard files in the Grafana JSON format into Cloud Monitoring
+
+
+1. Clone github repository 
+
+```
+git clone https://github.com/GoogleCloudPlatform/monitoring-dashboard-samples
+```
+
+
+2. Change to the directory for the dashboard importer:
+
+```
+cd monitoring-dashboard-samples/scripts/dashboard-importer
+```
+
+The dashboard importer includes the following scripts:
+
+import.sh, which converts dashboards and optionally uploads the converted dashboards to Cloud Monitoring.
+
+upload.sh, which uploads the converted dashboards—or any Monitoring dashboards—to Cloud Monitoring. The import.sh script calls this script to do the upload.
+
+
+
+3. Import the dashboard
+
+```
+./import.sh ./grafana.json ${PROJECT_ID}
+```
+
+When you use the import.sh script, you must specify the location of the Grafana dashboards to convert. The importer creates a directory that contains the converted dashboards and other information.
+
+
 ### Run Batch inference on GKE
 
 Once a model has completed fine-tuning and is deployed on GKE , its ready to run batch Inference pipeline.
@@ -345,7 +381,7 @@ Locust is an open source performance/load testing tool for HTTP and other protoc
 You can refer to the documentation to [set up](https://docs.locust.io/en/stable/installation.html) locust locally or deploy as a container on GKE.
 
 We have created a sample [locustfile](https://docs.locust.io/en/stable/writing-a-locustfile.html) to run tests against our model using sample prompts which we tried earlier in the exercise.
-Here is a sample ![graph](../benchmarks/locustfile.jpg)] to review.
+Here is a sample ![graph](../benchmarks/locustfile.jpg) to review.
 
 If you have a local set up for locust. You can execute the tests using following :
 
