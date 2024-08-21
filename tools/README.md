@@ -12,7 +12,7 @@ A sqlite backend is configured to store the experiments by mlflow.
 ```
 kubectl apply -f ns.yaml
 kubectl apply -f sa.yaml -n ml-tools
-kubectl apply -f mlflow-sql.yaml
+kubectl apply -f mlflow-sql.yaml -n ml-tools
 ```
 
 # Other dependencies
