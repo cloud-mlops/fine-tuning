@@ -1,223 +1,410 @@
-# Standalone vLLM
-## vLLM Pod
-- Update the image & bucket
+# Guide for standalone and distributed inferencing on GKE (Google Kubernetes Engine)
+
+This exercise assumes you have a fine-tuned model, that we would like to serve on GKE.
+If you have followed the previous steps for dataprep and finetune you would have a model store in the GCS bucket in your GCP Project.
+
+### A quick brief on Inference on VLLM.
+
+There are three common strategies for inference on vLLM:
+
+- Single GPU (no distributed inference)
+- Single-Node Multi-GPU (tensor parallel inference)
+- Multi-Node Multi-GPU 
+
+In this guide, you would serve a fine-tuned Gemma large language model (LLM) using graphical processing units (GPUs) on Google Kubernetes Engine (GKE) with the vLLM serving framework with the above mentioned deployment strategies.You can choose to swap the Gemma model with any other fine-tuned or instruction based model for inference on GKE.
+
+By the end of this guide, you should be able to perform the following steps:
+
+                [ Place holder for concept diagram]
+
+1. Prepare your ML Platform [Playground]( https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/platform/playground).
+2. Create a Persistent Disk for the LLM model weights.
+2. Deploy a vLLM container to your cluster to host your model.
+3. Use vLLM to serve the Gemma7B model through curl and a web chat interface.
+4. View Production metrics for your model serving on GKE
+5. Use custom metrics and HPA to scale your model deployments(instances) on GKE.
+
+### Prerequisites
+1. The ML Platform [Playground]( https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/platform/playground) must be deployed
+2. Data Set output from the [Data Preparation example](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/datapreparation/gemma-it)
+3. Fine tune or other model available ready to be served.If you have been following the [fine tuning exercise with gemma model](https://<github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch), a model artifact would be availble to use in [your model artifacts GCS bucket](https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/use-case/finetuning/pytorch)
+4. Set these Enviorment variables.
+
 ```
-env:
-- name: MODEL
-    value: /model-data/hyperparam/model-job-1
-...
-bucketName: kh-test-data
+PROJECT_ID=your-project-id>
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+V_MODEL_BUCKET=<model-artifacts-bucket>
+CLUSTER_NAME=<your-gke-cluster>
+NAMESPACE=ml-serve
+KSA=<k8s-service-account>
+HF_TOKEN=<your-Hugging-Face-account-token>
+MODEL_ID=<your-model-id>
+REGION=<your-region>
+IMAGE_NAME=<your-image-name>
+DISK_NAME=<your-disk-name>
 ```
 
-- Deploy the vLLM Pod which will load the model from GCS
+## Single GPU (no distributed inference)
+
+If your model fits in a single GPU, you probably don’t need to use distributed inference. Just use the single GPU to run the inference.
+You can follow the steps similiar to the Single-Node Multi-GPU (tensor parallel inference)
+
+## Single-Node Multi-GPU (tensor parallel inference):
+
+If your model is too large to fit in a single GPU, but it can fit in a single node with multiple GPUs, you can use tensor parallelism. The tensor parallel size is the number of GPUs you want to use. For example, if you have 4 GPUs in a single node, you can set the tensor parallel size to 4.
+
+#### Prepare your environment with a GKE cluster in Standard mode.
+
+Follow along the steps provide in this README.md( https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/platform/playground) to create a playground cluster for ML platform on GKE.
+
+You can also re-use the cluster from previous fine-tuning and dataprep exercise as mentioned in pre-requistes.
+
+From the CLI connect to the GKE cluster
+
 ```
-kubectl apply -f vllm-openai.yaml -n ml-team
+gcloud container clusters get-credentials ${CLUSTER_NAME} --region $REGION
 ```
 
-## vLLM Pod Monitoring for Prometheus
-Deploy pod monitoring
 ```
-kubectl apply -f pod-monitoring.yaml -n ml-team
+kubectl create ns ${NAMESPACE}
 ```
 
-## Custom metrics HPA
-Install the adapter
 ```
-kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/deploy/production/adapter_new_resource_model.yaml
-
-gcloud projects add-iam-policy-binding projects/gkebatchexpce3c8dcb \
-  --role roles/monitoring.viewer \
-  --member=principal://iam.googleapis.com/projects/348087736605/locations/global/workloadIdentityPools/gkebatchexpce3c8dcb.svc.id.goog/subject/ns/custom-metrics/sa/custom-metrics-stackdriver-adapter
+kubectl create sa ${KSA} -n ${NAMESPACE}
 ```
 
-Deploy the HPA resource
+#### Create a Persistent Disk for the LLM model weights
+
+If you already have LLM model and weights uploaded to a bucket location( as mentioned above) then skip creation of bucket.
+
+##### Optional :  Upload the model and weights to GCS bucket.
+
+Create a GCS bucket in the same region as your GKE cluster.
+
 ```
-kubectl apply -f hpa-vllm-openai.yaml -n ml-team
+gcloud storage buckets create gs://${V_MODEL_BUCKET} --location ${REGION}
 ```
 
-Output - HPA status
+Grant permission to kubernetes service account in cluster to access the storage bucket to view model weights
+
 ```
-Name:                                                                   vllm-openai-hpa
-Namespace:                                                              ml-team
-Labels:                                                                 <none>
-Annotations:                                                            <none>
-CreationTimestamp:                                                      Wed, 03 Jul 2024 00:04:31 +0000
-Reference:                                                              Deployment/vllm-openai
-Metrics:                                                                ( current / target )
-  "prometheus.googleapis.com|vllm:num_requests_running|gauge" on pods:  50 / 10
-Min replicas:                                                           1
-Max replicas:                                                           5
-Deployment pods:                                                        5 current / 5 desired
-Conditions:
-  Type            Status  Reason               Message
-  ----            ------  ------               -------
-  AbleToScale     True    ScaleDownStabilized  recent recommendations were higher than current one, applying the highest recent recommendation
-  ScalingActive   True    ValidMetricFound     the HPA was able to successfully calculate a replica count from pods metric prometheus.googleapis.com|vllm:num_requests_running|gauge
-  ScalingLimited  True    TooManyReplicas      the desired replica count is more than the maximum replica count
-Events:
-  Type    Reason             Age   From                       Message
-  ----    ------             ----  ----                       -------
-  Normal  SuccessfulRescale  92s   horizontal-pod-autoscaler  New size: 4; reason: pods metric prometheus.googleapis.com|vllm:num_requests_running|gauge above target
-  Normal  SuccessfulRescale  76s   horizontal-pod-autoscaler  New size: 5; reason: pods metric prometheus.googleapis.com|vllm:num_requests_running|gauge above target
+gcloud storage buckets add-iam-policy-binding "gs://$V_MODEL_BUCKET" \
+--member "principal://iam.googleapis.com/projects/"$PROJECT_NUMBER"/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/$NAMESPACE/sa/$KSA" \
+--role "roles/storage.objectViewer"
 ```
 
-Output - Pod Status Scaling Up
+Update the bucket access level to uniform.
+
 ```
-vllm-openai-59897668c4-5fsd5                               1/2     PodInitializing   0               2m13s
-vllm-openai-59897668c4-hw5h9                               2/2     Running           0               3d19h
-vllm-openai-59897668c4-phkbh                               1/2     PodInitializing   0               117s
-vllm-openai-59897668c4-q7kj6                               1/2     PodInitializing   0               2m13s
-vllm-openai-59897668c4-vd797                               1/2     PodInitializing   0               2m13s
+gcloud storage buckets update "gs://$V_MODEL_BUCKET"  --uniform-bucket-level-access
 ```
 
-Output - HPA Scaling Down
+Download the model to your local environment. For example, here we are downloading a model from hugging face.
+
+In your local enviornment, install hugging face hub using pip :
+
 ```
-Name:                                                                   vllm-openai-hpa
-Namespace:                                                              ml-team
-Labels:                                                                 <none>
-Annotations:                                                            <none>
-CreationTimestamp:                                                      Wed, 03 Jul 2024 00:04:31 +0000
-Reference:                                                              Deployment/vllm-openai
-Metrics:                                                                ( current / target )
-  "prometheus.googleapis.com|vllm:num_requests_running|gauge" on pods:  0 / 10
-Min replicas:                                                           1
-Max replicas:                                                           5
-Deployment pods:                                                        4 current / 3 desired
-Conditions:
-  Type            Status  Reason              Message
-  ----            ------  ------              -------
-  AbleToScale     True    SucceededRescale    the HPA controller was able to update the target scale to 3
-  ScalingActive   True    ValidMetricFound    the HPA was able to successfully calculate a replica count from pods metric prometheus.googleapis.com|vllm:num_requests_running|gauge
-  ScalingLimited  False   DesiredWithinRange  the desired count is within the acceptable range
-Events:
-  Type    Reason             Age    From                       Message
-  ----    ------             ----   ----                       -------
-  Normal  SuccessfulRescale  22m    horizontal-pod-autoscaler  New size: 4; reason: pods metric prometheus.googleapis.com|vllm:num_requests_running|gauge above target
-  Normal  SuccessfulRescale  21m    horizontal-pod-autoscaler  New size: 5; reason: pods metric prometheus.googleapis.com|vllm:num_requests_running|gauge above target
-  Normal  SuccessfulRescale  5m18s  horizontal-pod-autoscaler  New size: 4; reason: pods metric prometheus.googleapis.com|vllm:num_requests_running|gauge below target
-  Normal  SuccessfulRescale  15s    horizontal-pod-autoscaler  New size: 3; reason: pods metric prometheus.googleapis.com|vllm:num_requests_running|gauge below target
+pip3 install huggingface_hub
 ```
 
-## Import vLLM Dashboard to Cloud Monitoring
+Download the model using python3 script.:
+
+Note: The model_id that you provided in the script will be downloaded locally to your /tmp/models folder.
+
+```
+python3 serving-yamls/download_model_hugging_face.py
+```
+
+Upload the model to the GCS bucket.
+
+```
+MODEL_ID=<your_model_id> # eg: google/gemma-1.1-7b-it
+MODEL_ORG="$(dirname "$MODEL_ID")"      
+gsutil cp -r /tmp/models/$MODEL_ORG/  gs://$V_MODEL_BUCKET
+```
+
+##### Create PV, PVC and Persistent disk.
+
+Loading model weights from Persistent Volume is one of solutions to load models faster on GKE cluster. In GKE, Persistent Volumes backed by GCP Persistent Disks can be mounted read-only simultaneously  by multiple nodes(ReadOnlyMany), this makes multiple pods access the model weights possible. 
+
+1. Create a PVC for the model weights
+
+```
+kubectl apply -f serving-yamls/pvc_disk_image.yaml
+```
+
+2. Create a job downloading the models to the volume and review logs for successful completion.
+
+```
+sed -i -e "s|_YOUR_BUCKET_NAME_|${V_MODEL_BUCKET}|" serving-yamls/batch_job_download_model_on_pv_volume.yaml
+kubectl create -f serving-yamls/batch_job_download_model_on_pv_volume.yaml
+kubectl logs  module-download-job-ptdpt-6cq8r
+```
+
+Wait for the job to show completion.
+
+```
+module-download-job-sg6j7-4bxg4
+```
+
+3. Create the PV and PVC
+
+```
+PV_NAME="$(kubectl get pvc/block-pvc-model -o jsonpath='{.spec.volumeName}')"
+```
+
+```
+DISK_REF="$(kubectl get pv "$PV_NAME"  -o jsonpath='{.spec.csi.volumeHandle}')"
+```
+
+```
+gcloud compute images create model-weights-image --source-disk="$DISK_REF"
+```
+
+```
+gcloud compute disks create models-fine-tune-disk-v1  --size=1TiB --type=pd-ssd --zone=<enter-your-zone> --image=model-weights-image
+Note: Choose a zone based on cluster location and gpu availability
+```
+
+```
+sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/pv_and_pvc.yaml
+kubectl apply -f serving-yamls/pv_and_pvc.yaml
+```
+
+       
+#### Deploy a vLLM container to your cluster.
+
+Run the batch job to deploy model using persistent disk on GKE.
+
+```
+NAMESPACE=<your-inference-namespace>
+ACCELERATOR_TYPE=<gpu-accelerator-type> #e.g nvidia-l4
+
+sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/batch_job_model_deployment.yaml
+sed -i -e "s|_ACCELERATOR_TYPE_|${ACCELERATOR_TYPE}|" serving-yamls/batch_job_model_deployment.yaml
+
+```
+
+```
+kubectl create -f serving-yamls/model_deployment.yaml
+kubectl describe pods vllm-openai-<replace-the-pod-name> -n ${NAMESPACE}
+```
+
+```
+INFO:     Started server process [1]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+```
+
+
+#### Serve the deployed model through curl and a web chat interface.
+
+You can run curl commands to test prompts for your LLM
+
+ssh into the LLM pod 
+
+```
+kubectl exec -it vllm-openai-<your-pod-name> -n ml-serve -- bash
+```
+
+Run the curl prompt with your values
+
+```
+./servimg-yamls/prompt-n.sh
+```
+
+Optional : You can also deploy gradio chat interface to view the model chat interface.
+
+```
+sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/gradio.yaml
+kubectl apply -f serving-yamls/gradio.yaml
+```
+
+#### Production Metrics
+vLLM exposes a number of metrics that can be used to monitor the health of the system. These metrics are exposed via the /metrics endpoint on the vLLM OpenAI compatible API server.
+
+
+```
+kubectl exec -it vllm-openai-6cdc44d69-hrlkz -n ml-serve -- bash
+curl http://vllm-openai:8000/metrics
+```
+
+#### View Production metrics for your model serving on GKE
+
+You can configure monitoring of the metrics above using the [pod monitoring](https://cloud.google.com/stackdriver/docs/managed-prometheus/setup-managed#gmp-pod-monitoring)
+
+```
+kubectl apply -f serving-yamls/pod_monitoring.yaml
+```
+
+#### Import the vLLM metrics into cloud monitoring.
+
+
+Cloud Monitoring provides an [importer](https://cloud.google.com/monitoring/dashboards/import-grafana-dashboards) that you can use to import dashboard files in the Grafana JSON format into Cloud Monitoring
+
+
+1. Clone github repository 
+
 ```
 git clone https://github.com/GoogleCloudPlatform/monitoring-dashboard-samples
+```
+
+
+2. Change to the directory for the dashboard importer:
+
+```
 cd monitoring-dashboard-samples/scripts/dashboard-importer
-./import.sh ./grafana.json gkebatchexpce3c8dcb
 ```
 
-# Ray Service + vLLM
-- Update the image & bucket
+The dashboard importer includes the following scripts:
+
+import.sh, which converts dashboards and optionally uploads the converted dashboards to Cloud Monitoring.
+
+upload.sh, which uploads the converted dashboards—or any Monitoring dashboards—to Cloud Monitoring. The import.sh script calls this script to do the upload.
+
+
+
+3. Import the dashboard
+
 ```
-MODEL_ID: "/model-data/hyperparam/model-job-1"
-...
-bucketName: kh-test-data
+./import.sh ./grafana.json ${PROJECT_ID}
 ```
 
-- Deploy the Ray Service, the workers will load the model from GCS
+When you use the import.sh script, you must specify the location of the Grafana dashboards to convert. The importer creates a directory that contains the converted dashboards and other information.
+
+
+### Run Batch inference on GKE
+
+Once a model has completed fine-tuning and is deployed on GKE , its ready to run batch Inference pipeline.
+In this example batch inference pipeline, we would first send prompts to the hosted fine-tuned model and then validate the results based on ground truth.
+
+#### Prepare your environment
+
+
+Set env variables.
+
 ```
-kubectl apply -f rayserve-vllm.yaml -n ml-team
+PROJECT_ID=<your-project-id>
+PROJECT_NUMBER=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
+CLUSTER_NAME=<your-gke-cluster>
+NAMESPACE=ml-serve
+MODEL_PATH=<your-model-path>
+BUCKET="<your dataset bucket name>"
+DATASET_OUTPUT_PATH=""
+ENDPOINT=<your-endpoint> # eg "http://vllm-openai:8000/v1/chat/completions"
+KSA=<k8s-service-account> # Service account with work-load identity enabled
 ```
 
-Describe the Ray Service for controller details
+Create Service account.
+
 ```
-kubectl describe rayservice gemma-ft -n ml-team
+NAMESPACE=ml-serve
+kubectl create sa ${KSA} -n ${NAMESPACE}
 ```
 
-Output - Running
+Setup Workload Identity Federation access to read/write to the bucket for the inference batch data set
+
 ```
-...
-Status:
-  Active Service Status:
-    Application Statuses:
-      Llm:
-        Health Last Update Time:  2024-07-02T20:47:23Z
-        Serve Deployment Statuses:
-          VLLM Deployment:
-            Health Last Update Time:  2024-07-02T20:47:23Z
-            Status:                   HEALTHY
-        Status:                       RUNNING
-    Ray Cluster Name:                 gemma-ft-raycluster-q25t6
-...
+gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
+    --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
+    --role "roles/storage.objectUser"
 ```
 
-Output - Triggered Scaling
 ```
-...
-Status:
-  Active Service Status:
-    Application Statuses:
-      Llm:
-        Health Last Update Time:  2024-07-03T00:18:34Z
-        Serve Deployment Statuses:
-          VLLM Deployment:
-            Health Last Update Time:  2024-07-03T00:18:34Z
-            Message:                  Upscaling from 1 to 4 replicas.
-            Status:                   UPSCALING
-        Status:                       RUNNING
-    Ray Cluster Name:                 gemma-ft-raycluster-q25t6
-...
+gcloud storage buckets add-iam-policy-binding gs://${BUCKET} \
+    --member "principal://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${PROJECT_ID}.svc.id.goog/subject/ns/${NAMESPACE}/sa/${KSA}" \
+    --role "roles/storage.legacyBucketWriter"
 ```
 
-Output - Model Loading
+#### Build the image of the source and execute batch inference job
+
+Create Artifact Registry repository for your docker image
+
 ```
-...
-Status:
-  Active Service Status:
-    Application Statuses:
-      Llm:
-        Health Last Update Time:  2024-07-03T00:30:35Z
-        Serve Deployment Statuses:
-          VLLM Deployment:
-            Health Last Update Time:  2024-07-03T00:30:35Z
-            Message:                  Deployment 'VLLMDeployment' in application 'llm' has 2 replicas that have taken more than 30s to initialize. This may be caused by a slow __init__ or reconfigure method.
-            Status:                   UPSCALING
-        Status:                       RUNNING
-    Ray Cluster Name:                 gemma-ft-raycluster-q25t6
-    Ray Cluster Status:
-      Available Worker Replicas:  4
-      Desired CPU:                34
-      Desired GPU:                8
-      Desired Memory:             108Gi
-      Desired TPU:                0
-      Desired Worker Replicas:    4
-...
+gcloud artifacts repositories create llm-inference-repository \
+    --repository-format=docker \
+    --location=us \
+    --project=${PROJECT_ID} \
+    --async
+
 ```
 
-Output - Pod Status Scaling Up
+Set Docker Image URL
+
 ```
-NAME                                               READY   STATUS    RESTARTS   AGE
-gemma-ft-raycluster-q25t6-head-pwkvd               3/3     Running   0          5h22m
-gemma-ft-raycluster-q25t6-worker-gpu-group-br2p5   0/3     Pending   0          64s
-gemma-ft-raycluster-q25t6-worker-gpu-group-jrsst   0/3     Pending   0          64s
-gemma-ft-raycluster-q25t6-worker-gpu-group-kktvz   3/3     Running   0          4h33m
-gemma-ft-raycluster-q25t6-worker-gpu-group-wr4cw   0/3     Pending   0          64s
+DOCKER_IMAGE_URL=us-docker.pkg.dev/${PROJECT_ID}/llm-inference-repository/validate:v1.0.0
 ```
 
-Output - Scaling Down
+Enable the Cloud Build APIs
+
 ```
-Status:
-  Active Service Status:
-    Application Statuses:
-      Llm:
-        Health Last Update Time:  2024-07-03T00:39:35Z
-        Serve Deployment Statuses:
-          VLLM Deployment:
-            Health Last Update Time:  2024-07-03T00:39:35Z
-            Message:                  Deployment 'VLLMDeployment' in application 'llm' has 1 replicas that have taken more than 30s to initialize. This may be caused by a slow __init__ or reconfigure method.
-            Status:                   DOWNSCALING
-        Status:                       RUNNING
-    Ray Cluster Name:                 gemma-ft-raycluster-q25t6
-    Ray Cluster Status:
-      Available Worker Replicas:  3
-      Desired CPU:                26
-      Desired GPU:                6
-      Desired Memory:             83Gi
-      Desired TPU:                0
-      Desired Worker Replicas:    3
+gcloud services enable cloudbuild.googleapis.com --project ${PROJECT_ID}
 ```
 
-## Additional Files
+Build container image using Cloud Build and push the image to Artifact Registry Modify cloudbuild.yaml to specify the image url
+
+sed -i "s|IMAGE_URL|${DOCKER_IMAGE_URL}|" cloudbuild.yaml && \
+gcloud builds submit . --project ${PROJECT_ID}
+
+Get credentials for the GKE cluster
+
 ```
-rayserve-vllm-local.yaml # Load code as a configmap for custom updates
-rayserve-vllm-mlp.yaml   # MLP specific, head KSA is ray-head
+gcloud container fleet memberships get-credentials ${CLUSTER_NAME} --project ${PROJECT_ID}
 ```
+
+Set variables for the inference job in model-eval.yaml
+
+```
+sed -i -e "s|IMAGE_URL|${DOCKER_IMAGE_URL}|" \
+    -i -e "s|KSA|${KSA}|" \
+    -i -e "s|V_BUCKET|${BUCKET}|" \
+    -i -e "s|V_MODEL_PATH|${MODEL_PATH}|" \
+    -i -e "s|V_DATASET_OUTPUT_PATH|${DATASET_OUTPUT_PATH}|" \
+    -i -e "s|V_ENDPOINT|${ENDPOINT}|" \
+    model-eval.yaml
+```
+
+Create the Job in the ml-team namespace using kubectl command
+
+```
+kubectl apply -f model-eval.yaml -n ${NAMESPACE}
+```
+
+You can review predictions result in file named `predictions.txt` .Sample file has been added to the repository.
+The job will take approx 45 mins to execute.
+
+### Run Benchmarks for inference
+
+The model is ready to run the benchmarks for inference job. We can run few performance tests using locust.
+Locust is an open source performance/load testing tool for HTTP and other protocols.
+You can refer to the documentation to [set up](https://docs.locust.io/en/stable/installation.html) locust locally or deploy as a container on GKE.
+
+We have created a sample [locustfile](https://docs.locust.io/en/stable/writing-a-locustfile.html) to run tests against our model using sample prompts which we tried earlier in the exercise.
+Here is a sample ![graph](./serving-yamls/benchmarks/locust.py) to review.
+
+If you have a local set up for locust. You can execute the tests using following :
+
+
+```
+cd benchmarks
+$locust
+```
+
+You can update the service end point of model to LoadBalancer(type) to ensure you can reach the hosted model's endpoint outside the ml-serve namespace . You can access the model endpoint using correct [annotation](https://cloud.google.com/kubernetes-engine/docs/concepts/service-load-balancer#load_balancer_types)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
