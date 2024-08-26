@@ -396,6 +396,34 @@ You can update the service end point of model to LoadBalancer(type) to ensure yo
 
 
 
+### Inference at Scale
+
+There are different metrics available that could be used to autoscale your inference workloads on GKE.
+
+1. Server metrics: LLM inference servers vLLM provides workload-specific performance metrics. GKE simplifies scraping and autoscaling of workloads based on these server-level metrics. You can use these metrics to gain visibility into performance indicators like batch size, queue size, and decode latencies
+
+In case of vLLM, [production metrics class](https://docs.vllm.ai/en/latest/serving/metrics.html) exposes a number of useful metrics whch GKE can use to autoscale inference metrics on.
+
+```
+vllm:num_requests_running : Number of requests currently running on GPU.
+vllm:num_requests_waiting : Number of requests waiting to be processed
+```
+
+2. GPU metrics:
+
+```
+GPU Utilization (DCGM_FI_DEV_GPU_UTIL)	Measures the duty cycle, which is the amount of time that the GPU is active.
+GPU Memory Usage (DCGM_FI_DEV_FB_USED)	Measures how much GPU memory is being used at a given point in time. This is useful for workloads that implement dynamic allocation of GPU memory.
+```
+
+3. CPU metrics: Since the inference workloads primarily rely on GPU resources , we don't recommend CPU and memory utilization as the only indicators of the amount of resources a job consumes.Therefore, using CPU metrics alone for autoscaling can lead to suboptimal performance and costs. 
+ 
+HPA is an efficient way to ensure that your model servers scale appropriately with load. Fine-tuning the HPA settings is the primary way to align your provisioned hardware cost with traffic demands to achieve your inference server performance goals.
+
+We recommend setting these HPA configuration options:
+
+Stabilization window: Use this HPA configuration option to prevent rapid replica count changes due to fluctuating metrics. Defaults are 5 minutes for scale-down (avoiding premature downscaling) and 0 for scale-up (ensuring responsiveness). Adjust the value based on your workload's volatility and your preferred responsiveness.
+Scaling policies: Use this HPA configuration option to fine-tune the scale-up and scale-down behavior. You can set the "Pods" policy limit to specify the absolute number of replicas changed per time unit, and the "Percent" policy limit to specify by the percentage change.
 
 
 
