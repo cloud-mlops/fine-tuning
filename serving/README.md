@@ -458,21 +458,82 @@ Select ONE of yamls to configure the HorizontalPodAutoscaler resource in your ma
 
 Queue-depth
 ```
-kubectl apply -f serving-yamls/inference-scale/hpa-vllm-openai-queue-size.yaml
+NAMESPACE=ml-serve
+kubectl apply -f serving-yamls/inference-scale/hpa-vllm-openai-queue-size.yaml -n ${NAMESPACE}
 
 ```
 
+OR
 
 Batch-size
 ```
-kubectl apply -f serving-yamls/inference-scale/hpa-vllm-openai-batch-size.yaml
+NAMESPACE=ml-serve
+kubectl apply -f serving-yamls/inference-scale/hpa-vllm-openai-batch-size.yaml -n ${NAMESPACE}
+```
+
+Note: I used Batch Size HPA to run the scale test below:
+
+```
+kubectl get  hpa vllm-openai-hpa -n ml-serve --watch
+NAME              REFERENCE                TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+vllm-openai-hpa   Deployment/vllm-openai   0/10      1         5         1          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   13/10     1         5         1          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   17/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   12/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   17/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   14/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   17/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   10/10     1         5         2          6d16h
+
+```
+
+```
+kubectl get pods -n ml-serve --watch
+NAME                           READY   STATUS      RESTARTS   AGE
+gradio-6b8698d7b4-88zm7        1/1     Running     0          10d
+model-eval-2sxg2               0/1     Completed   0          8d
+vllm-openai-767b477b77-2jm4v   1/1     Running     0          3d17h
+vllm-openai-767b477b77-82l8v   0/1     Pending     0          9s
+```
+
+Pod scaled up
+```
+kubectl get pods -n ml-serve --watch
+NAME                           READY   STATUS      RESTARTS   AGE
+gradio-6b8698d7b4-88zm7        1/1     Running     0          10d
+model-eval-2sxg2               0/1     Completed   0          8d
+vllm-openai-767b477b77-2jm4v   1/1     Running     0          3d17h
+vllm-openai-767b477b77-82l8v   1/1     Running     0          111s
+```
+
+The new pod is deployed on a node triggered by autoscaler.
+Note: The existing node where inference workload was deployed in this case had only two GPUS. Hence a new node is required to deploy the copy pod of inference workload.
+
+```
+kubectl describe pods vllm-openai-767b477b77-82l8v -n ml-serve
+
+Events:
+  Type     Reason                  Age    From                                   Message
+  ----     ------                  ----   ----                                   -------
+  Warning  FailedScheduling        4m15s  gke.io/optimize-utilization-scheduler  0/3 nodes are available: 1 Insufficient ephemeral-storage, 1 Insufficient nvidia.com/gpu, 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+  Normal   TriggeredScaleUp        4m13s  cluster-autoscaler                     pod triggered scale-up: [{https://www.googleapis.com/compute/v1/projects/gkebatchexpce3c8dcb/zones/us-east4-a/instanceGroups/gke-kh-e2e-l4-2-c399c5c0-grp 1->2 (max: 20)}]
+  Normal   Scheduled               2m40s  gke.io/optimize-utilization-scheduler  Successfully assigned ml-serve/vllm-openai-767b477b77-82l8v to gke-kh-e2e-l4-2-c399c5c0-vvm9
+  Normal   SuccessfulAttachVolume  2m36s  attachdetach-controller                AttachVolume.Attach succeeded for volume "model-weights-disk-1024gb-zone-a"
+  Normal   Pulling                 2m29s  kubelet                                Pulling image "vllm/vllm-openai:v0.5.3.post1"
+  Normal   Pulled                  2m25s  kubelet                                Successfully pulled image "vllm/vllm-openai:v0.5.3.post1" in 4.546s (4.546s including waiting). Image size: 5586843591 bytes.
+  Normal   Created                 2m25s  kubelet                                Created container inference-server
+  Normal   Started                 2m25s  kubelet                                Started container inference-server
+
 ```
 
 
 #### Prepare your environment to autoscale with GPU metrics
 
+Another option is to scale the workloads using GPU metrics provided by Cloud Monitoring using GKE or DCGM
 
 1. Export the GPU metrics to Cloud Monitoring. If your GKE cluster has system metrics enabled, it automatically sends the GPU utilization metric to Cloud Monitoring through the container/accelerator/duty_cycle system metric, every 60 seconds.
+
+For this ML Platform, we have enabled and exported DCGM metrics to Cloud Monitoring as well.
 
 < Add GPU Metrics Dashboard here >
 
