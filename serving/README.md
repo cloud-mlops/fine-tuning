@@ -402,7 +402,7 @@ There are different metrics available that could be used to autoscale your infer
 
 1. Server metrics: LLM inference servers vLLM provides workload-specific performance metrics. GKE simplifies scraping and autoscaling of workloads based on these server-level metrics. You can use these metrics to gain visibility into performance indicators like batch size, queue size, and decode latencies
 
-In case of vLLM, [production metrics class](https://docs.vllm.ai/en/latest/serving/metrics.html) exposes a number of useful metrics whch GKE can use to autoscale inference metrics on.
+In case of vLLM, [production metrics class](https://docs.vllm.ai/en/latest/serving/metrics.html) exposes a number of useful metrics whch GKE can use to autoscale inference workloads.
 
 ```
 vllm:num_requests_running : Number of requests currently running on GPU.
@@ -425,11 +425,82 @@ We recommend setting these HPA configuration options:
 Stabilization window: Use this HPA configuration option to prevent rapid replica count changes due to fluctuating metrics. Defaults are 5 minutes for scale-down (avoiding premature downscaling) and 0 for scale-up (ensuring responsiveness). Adjust the value based on your workload's volatility and your preferred responsiveness.
 Scaling policies: Use this HPA configuration option to fine-tune the scale-up and scale-down behavior. You can set the "Pods" policy limit to specify the absolute number of replicas changed per time unit, and the "Percent" policy limit to specify by the percentage change.
 
+For more details, see Horizontal pod autoscaling in the Google Cloud Managed Service for Prometheus [documentation](https://cloud.google.com/kubernetes-engine/docs/horizontal-pod-autoscaling).
 
 
+Pre-requistes:
+
+1. GKE cluster running inference workload as shown in previous examples.
+2. Export the metrics from the vLLM server to Cloud Monitoring as shown in enable monitoring section.
+
+We have couple of options to scale the inference workload on GKE using the HPA and custom metrics adapter.
+
+1. Scale pod on the same node as the existing inference workload.
+2. Scale pod on the other nodes in the same node pool as the existing inference workload.
 
 
+#### Prepare your environment to autoscale with HPA metrics
 
+
+1. Install the Custom Metrics Stackdriver Adapter. This adapter makes the custom metric that you exported to Cloud Monitoring visible to the HPA controller. For more details, see Horizontal pod autoscaling in the Google Cloud Managed Service for Prometheus documentation.
+
+The following example command shows how to install the adapter:
+
+```
+kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/cust
+```
+
+2. Set up the custom metric-based HPA resource. Deploy an HPA resource that is based on your preferred custom metric. 
+
+Select ONE of yamls to configure the HorizontalPodAutoscaler resource in your manifest:
+
+< Add vllm Metrics Dashboard here >
+
+Queue-depth
+```
+kubectl apply -f serving-yamls/inference-scale/hpa-vllm-openai-queue-size.yaml
+
+```
+
+
+Batch-size
+```
+kubectl apply -f serving-yamls/inference-scale/hpa-vllm-openai-batch-size.yaml
+```
+
+
+#### Prepare your environment to autoscale with GPU metrics
+
+
+1. Export the GPU metrics to Cloud Monitoring. If your GKE cluster has system metrics enabled, it automatically sends the GPU utilization metric to Cloud Monitoring through the container/accelerator/duty_cycle system metric, every 60 seconds.
+
+< Add GPU Metrics Dashboard here >
+
+In the code, make sure to change the DCGM metric name to use in HPA to lowercase. This is because there's a known issue where HPA doesn't work with uppercase external metric names.
+
+2. Install the Custom Metrics Stackdriver Adapter. This adapter makes the custom metric you exported to Monitoring visible to the HPA controller. The following example command shows how to execute this installation:
+
+
+```
+kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/deploy/production/adapter_new_resource_model.yaml
+```
+
+3. Set up the custom metric-based HPA resource. Deploy a HPA resource based on your preferred custom metric. 
+Identify an average value target for HPA to trigger autoscaling. You can do this experimentally; for example, generate increasing load on your server and observe where your GPU utilization peaks. Be mindful of the HPA tolerance, which defaults to a 0.1 no-action range around the target value to dampen oscillation.
+We recommend using the locust-load-inference tool for testing. You can also create a Cloud Monitoring custom dashboard to visualize the metric behavior.
+
+Scale with GKE metrics
+```
+kubectl apply -f serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-gke.yaml
+
+```
+
+
+Scale with DCGM metrics
+
+```
+kubectl apply -f serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-dcgm.yaml
+```
 
 
 
