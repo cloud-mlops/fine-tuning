@@ -17,7 +17,7 @@ spec:
         selector:
           matchLabels:
             metric.labels.exported_container: inference-server
-            metric.labels.exported_namespace: _NAMEPSACE_ # your namespace
+            metric.labels.exported_namespace: _NAMESPACE_ # your namespace
       target:
         type: AverageValue
         averageValue:  $HPA_AVERAGEVALUE_TARGET

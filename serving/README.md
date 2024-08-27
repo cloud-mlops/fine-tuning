@@ -447,7 +447,7 @@ We have couple of options to scale the inference workload on GKE using the HPA a
 The following example command shows how to install the adapter:
 
 ```
-kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/cust
+kubectl apply -f kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/deploy/production/adapter_new_resource_model.yaml
 ```
 
 2. Set up the custom metric-based HPA resource. Deploy an HPA resource that is based on your preferred custom metric. 
@@ -455,6 +455,10 @@ kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stack
 Select ONE of yamls to configure the HorizontalPodAutoscaler resource in your manifest:
 
 < Add vllm Metrics Dashboard here >
+
+
+
+Add the appropriate target values for vllm:num_requests_running or vllm:num_requests_waiting in hte yaml file.
 
 Queue-depth
 ```
@@ -551,16 +555,19 @@ Identify an average value target for HPA to trigger autoscaling. You can do this
 We recommend using the locust-load-inference tool for testing. You can also create a Cloud Monitoring custom dashboard to visualize the metric behavior.
 
 Scale with GKE metrics
-```
-kubectl apply -f serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-gke.yaml
 
 ```
+NAMESPACE=ml-serve
+sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-gke.yaml
+kubectl apply -f serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-gke.yaml -n ${NAMESPACE}
 
-
+```
 Scale with DCGM metrics
 
 ```
-kubectl apply -f serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-dcgm.yaml
+NAMESPACE=ml-serve
+sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-dcgm.yaml
+kubectl apply -f serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-dcgm.yaml -n ${NAMESPACE}
 ```
 
 

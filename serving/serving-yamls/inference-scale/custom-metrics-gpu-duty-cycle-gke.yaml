@@ -17,7 +17,7 @@ spec:
         selector:
           matchLabels:
             resource.labels.container_name: inference-server
-            resource.labels.namespace_name: _NAMEPSACE_ # your namespace
+            resource.labels.namespace_name: _NAMESPACE_ # your namespace
       target:
         type: AverageValue
         averageValue:  $HPA_AVERAGEVALUE_TARGET
