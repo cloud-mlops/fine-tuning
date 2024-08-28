@@ -15,8 +15,6 @@ In this guide, you would serve a fine-tuned Gemma large language model (LLM) usi
 
 By the end of this guide, you should be able to perform the following steps:
 
-                [ Place holder for concept diagram]
-
 1. Prepare your ML Platform [Playground]( https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/platform/playground).
 2. Create a Persistent Disk for the LLM model weights.
 2. Deploy a vLLM container to your cluster to host your model.
@@ -381,7 +379,7 @@ Locust is an open source performance/load testing tool for HTTP and other protoc
 You can refer to the documentation to [set up](https://docs.locust.io/en/stable/installation.html) locust locally or deploy as a container on GKE.
 
 We have created a sample [locustfile](https://docs.locust.io/en/stable/writing-a-locustfile.html) to run tests against our model using sample prompts which we tried earlier in the exercise.
-Here is a sample ![graph](./serving-yamls/benchmarks/locust.py) to review.
+Here is a sample ![graph](./serving-yamls/benchmarks/locust.jpg) to review.
 
 If you have a local set up for locust. You can execute the tests using following :
 
@@ -452,12 +450,9 @@ kubectl apply -f kubectl apply -f https://raw.githubusercontent.com/GoogleCloudP
 
 2. Set up the custom metric-based HPA resource. Deploy an HPA resource that is based on your preferred custom metric. 
 
+Here is a sample ![metrics graph](./serving-yamls/inference-scale/cloud-monitoring-metrics-inference.png) to review.
+
 Select ONE of yamls to configure the HorizontalPodAutoscaler resource in your manifest:
-
-< Add vllm Metrics Dashboard here >
-
-
-
 Add the appropriate target values for vllm:num_requests_running or vllm:num_requests_waiting in hte yaml file.
 
 Queue-depth
@@ -530,46 +525,7 @@ Events:
 
 ```
 
-
-#### Prepare your environment to autoscale with GPU metrics
-
-Another option is to scale the workloads using GPU metrics provided by Cloud Monitoring using GKE or DCGM
-
-1. Export the GPU metrics to Cloud Monitoring. If your GKE cluster has system metrics enabled, it automatically sends the GPU utilization metric to Cloud Monitoring through the container/accelerator/duty_cycle system metric, every 60 seconds.
-
-For this ML Platform, we have enabled and exported DCGM metrics to Cloud Monitoring as well.
-
-< Add GPU Metrics Dashboard here >
-
-In the code, make sure to change the DCGM metric name to use in HPA to lowercase. This is because there's a known issue where HPA doesn't work with uppercase external metric names.
-
-2. Install the Custom Metrics Stackdriver Adapter. This adapter makes the custom metric you exported to Monitoring visible to the HPA controller. The following example command shows how to execute this installation:
-
-
-```
-kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/deploy/production/adapter_new_resource_model.yaml
-```
-
-3. Set up the custom metric-based HPA resource. Deploy a HPA resource based on your preferred custom metric. 
-Identify an average value target for HPA to trigger autoscaling. You can do this experimentally; for example, generate increasing load on your server and observe where your GPU utilization peaks. Be mindful of the HPA tolerance, which defaults to a 0.1 no-action range around the target value to dampen oscillation.
-We recommend using the locust-load-inference tool for testing. You can also create a Cloud Monitoring custom dashboard to visualize the metric behavior.
-
-Scale with GKE metrics
-
-```
-NAMESPACE=ml-serve
-sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-gke.yaml
-kubectl apply -f serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-gke.yaml -n ${NAMESPACE}
-
-```
-Scale with DCGM metrics
-
-```
-NAMESPACE=ml-serve
-sed -i -e "s|_NAMESPACE_|${NAMESPACE}|" serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-dcgm.yaml
-kubectl apply -f serving-yamls/inference-scale/custom-metrics-gpu-duty-cycle-dcgm.yaml -n ${NAMESPACE}
-```
-
+In next iteration, we would provide details on how to scale inference workloads with GPU metrics.
 
 
 
