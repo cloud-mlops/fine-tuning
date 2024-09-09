@@ -1,0 +1,140 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: headless-svc
+spec:
+  clusterIP: None # clusterIP must be None to create a headless service
+  selector:
+    job-name: finetune-gemma-test # must match Job name
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: finetune-gemma-test
+  namespace: ml-team
+spec:
+  backoffLimit: 0
+  completions: 2
+  parallelism: 2
+  completionMode: Indexed
+  template:
+    metadata:
+      labels:
+        app: finetune-job
+        job-track-id: finetune-gemma-test
+      annotations:
+        gke-gcsfuse/volumes: "true"
+        gke-gcsfuse/memory-limit: "35Gi"
+        cluster-autoscaler.kubernetes.io/consume-provisioning-request: a100-2-job
+        cluster-autoscaler.kubernetes.io/provisioning-class-name: "queued-provisioning.gke.io"     
+    spec:
+      subdomain: headless-svc
+      serviceAccountName: ray-worker
+      terminationGracePeriodSeconds: 600
+      containers:
+      - name: gpu-job
+        imagePullPolicy: Always 
+        image: us-docker.pkg.dev/gkebatchexpce3c8dcb/llm/finetune:gemma-v0.0.3
+        ports:
+        - containerPort: 29500
+        securityContext:
+          privileged: true
+        resources:
+          requests:
+            nvidia.com/gpu: "2"
+          limits:
+            nvidia.com/gpu: "2"
+        command:
+          - bash
+          - -c
+          - |
+            # sleep 3600
+            accelerate launch \
+            --config_file fsdp_config.yaml \
+            --debug \
+            --main_process_ip finetune-gemma-test-0.headless-svc \
+            --main_process_port 29500 \
+            --machine_rank ${JOB_COMPLETION_INDEX} \
+            --num_processes 4 \
+            --num_machines 2 \
+            fine_tune.py
+        env:
+        - name: "EXPERIMENT"
+          value: "gemma-ft-2-a100-demo"
+        - name: "MLFLOW_ENABLE"
+          value: "true"
+        - name: "MLFLOW_TRACKING_URI"
+          value: "http://mlflow-tracking-service.ml-tools:5000"
+        - name: "MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING"
+          value: "true"
+        - name: "TRAINING_DATASET_BUCKET"
+          value: "kh-finetune-ds"
+        - name: "TRAINING_DATASET_PATH"
+          value: "dataset/output-a2aa2c3/training"
+        - name: MODEL_NAME
+          value: "google/gemma-2-9b-it"
+        - name: NEW_MODEL
+          value: "gemma-2-9b-demo"
+        - name: MODEL_PATH
+          value: "/model-data/model-gemma2-a100/experiment-a100-demo"
+        - name: NCCL_DEBUG
+          value: "INFO"
+        - name: LORA_R
+          value: "16"
+        - name: LORA_ALPHA
+          value: "32"
+        - name: LORA_DROPOUT
+          value: "0.2"
+        - name: MAX_GRAD_NORM
+          value: "1.0"
+        - name: EPOCHS
+          value: "1"
+        - name: LEARNING_RATE
+          value: "2e-4"
+        - name: WEIGHT_DECAY
+          value: ".005"
+        - name: WARMUP_RATIO
+          value: "0.2"
+        - name: MAX_SEQ_LENGTH
+          value: "2048"
+        - name: TRAIN_BATCH_SIZE
+          value: "8"
+        - name: GRADIENT_ACCUMULATION_STEPS
+          value: "2"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: hf-secret
+              key: hf_api_token
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        - name: gcs-fuse-csi-ephemeral
+          mountPath: /model-data
+          readOnly: false
+      volumes:
+      - name: dshm
+        emptyDir:
+          medium: Memory
+      - name: gcs-fuse-csi-ephemeral
+        csi:
+          driver: gcsfuse.csi.storage.gke.io
+          volumeAttributes:
+            bucketName: kr-finetune
+            mountOptions: "implicit-dirs"
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-tesla-a100
+        cloud.google.com/gke-gpu-driver-version: latest
+      restartPolicy: OnFailure
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "on-demand"
+        value: "true"
+        operator: "Equal"
+        effect: "NoSchedule"
+      - key: "cloud.google.com/gke-queued"
+        value: "true"
+        operator: "Equal"
+        effect: "NoSchedule"
