@@ -15,8 +15,6 @@ In this guide, you would serve a fine-tuned Gemma large language model (LLM) usi
 
 By the end of this guide, you should be able to perform the following steps:
 
-                [ Place holder for concept diagram]
-
 1. Prepare your ML Platform [Playground]( https://github.com/GoogleCloudPlatform/ai-on-gke/tree/ml-platform-dev/best-practices/ml-platform/examples/platform/playground).
 2. Create a Persistent Disk for the LLM model weights.
 2. Deploy a vLLM container to your cluster to host your model.
@@ -381,7 +379,7 @@ Locust is an open source performance/load testing tool for HTTP and other protoc
 You can refer to the documentation to [set up](https://docs.locust.io/en/stable/installation.html) locust locally or deploy as a container on GKE.
 
 We have created a sample [locustfile](https://docs.locust.io/en/stable/writing-a-locustfile.html) to run tests against our model using sample prompts which we tried earlier in the exercise.
-Here is a sample ![graph](./serving-yamls/benchmarks/locust.py) to review.
+Here is a sample ![graph](./serving-yamls/benchmarks/locust.jpg) to review.
 
 If you have a local set up for locust. You can execute the tests using following :
 
@@ -396,13 +394,138 @@ You can update the service end point of model to LoadBalancer(type) to ensure yo
 
 
 
+### Inference at Scale
+
+There are different metrics available that could be used to autoscale your inference workloads on GKE.
+
+1. Server metrics: LLM inference servers vLLM provides workload-specific performance metrics. GKE simplifies scraping and autoscaling of workloads based on these server-level metrics. You can use these metrics to gain visibility into performance indicators like batch size, queue size, and decode latencies
+
+In case of vLLM, [production metrics class](https://docs.vllm.ai/en/latest/serving/metrics.html) exposes a number of useful metrics whch GKE can use to autoscale inference workloads.
+
+```
+vllm:num_requests_running : Number of requests currently running on GPU.
+vllm:num_requests_waiting : Number of requests waiting to be processed
+```
+
+2. GPU metrics:
+
+```
+GPU Utilization (DCGM_FI_DEV_GPU_UTIL)	Measures the duty cycle, which is the amount of time that the GPU is active.
+GPU Memory Usage (DCGM_FI_DEV_FB_USED)	Measures how much GPU memory is being used at a given point in time. This is useful for workloads that implement dynamic allocation of GPU memory.
+```
+
+3. CPU metrics: Since the inference workloads primarily rely on GPU resources , we don't recommend CPU and memory utilization as the only indicators of the amount of resources a job consumes.Therefore, using CPU metrics alone for autoscaling can lead to suboptimal performance and costs. 
+ 
+HPA is an efficient way to ensure that your model servers scale appropriately with load. Fine-tuning the HPA settings is the primary way to align your provisioned hardware cost with traffic demands to achieve your inference server performance goals.
+
+We recommend setting these HPA configuration options:
+
+Stabilization window: Use this HPA configuration option to prevent rapid replica count changes due to fluctuating metrics. Defaults are 5 minutes for scale-down (avoiding premature downscaling) and 0 for scale-up (ensuring responsiveness). Adjust the value based on your workload's volatility and your preferred responsiveness.
+Scaling policies: Use this HPA configuration option to fine-tune the scale-up and scale-down behavior. You can set the "Pods" policy limit to specify the absolute number of replicas changed per time unit, and the "Percent" policy limit to specify by the percentage change.
+
+For more details, see Horizontal pod autoscaling in the Google Cloud Managed Service for Prometheus [documentation](https://cloud.google.com/kubernetes-engine/docs/horizontal-pod-autoscaling).
 
 
+Pre-requistes:
+
+1. GKE cluster running inference workload as shown in previous examples.
+2. Export the metrics from the vLLM server to Cloud Monitoring as shown in enable monitoring section.
+
+We have couple of options to scale the inference workload on GKE using the HPA and custom metrics adapter.
+
+1. Scale pod on the same node as the existing inference workload.
+2. Scale pod on the other nodes in the same node pool as the existing inference workload.
 
 
+#### Prepare your environment to autoscale with HPA metrics
 
 
+1. Install the Custom Metrics Stackdriver Adapter. This adapter makes the custom metric that you exported to Cloud Monitoring visible to the HPA controller. For more details, see Horizontal pod autoscaling in the Google Cloud Managed Service for Prometheus documentation.
 
+The following example command shows how to install the adapter:
+
+```
+kubectl apply -f kubectl apply -f https://raw.githubusercontent.com/GoogleCloudPlatform/k8s-stackdriver/master/custom-metrics-stackdriver-adapter/deploy/production/adapter_new_resource_model.yaml
+```
+
+2. Set up the custom metric-based HPA resource. Deploy an HPA resource that is based on your preferred custom metric. 
+
+Here is a sample ![metrics graph](./serving-yamls/inference-scale/cloud-monitoring-metrics-inference.png) to review.
+
+Select ONE of yamls to configure the HorizontalPodAutoscaler resource in your manifest:
+Add the appropriate target values for vllm:num_requests_running or vllm:num_requests_waiting in hte yaml file.
+
+Queue-depth
+```
+NAMESPACE=ml-serve
+kubectl apply -f serving-yamls/inference-scale/hpa-vllm-openai-queue-size.yaml -n ${NAMESPACE}
+
+```
+
+OR
+
+Batch-size
+```
+NAMESPACE=ml-serve
+kubectl apply -f serving-yamls/inference-scale/hpa-vllm-openai-batch-size.yaml -n ${NAMESPACE}
+```
+
+Note: I used Batch Size HPA to run the scale test below:
+
+```
+kubectl get  hpa vllm-openai-hpa -n ml-serve --watch
+NAME              REFERENCE                TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+vllm-openai-hpa   Deployment/vllm-openai   0/10      1         5         1          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   13/10     1         5         1          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   17/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   12/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   17/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   14/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   17/10     1         5         2          6d16h
+vllm-openai-hpa   Deployment/vllm-openai   10/10     1         5         2          6d16h
+
+```
+
+```
+kubectl get pods -n ml-serve --watch
+NAME                           READY   STATUS      RESTARTS   AGE
+gradio-6b8698d7b4-88zm7        1/1     Running     0          10d
+model-eval-2sxg2               0/1     Completed   0          8d
+vllm-openai-767b477b77-2jm4v   1/1     Running     0          3d17h
+vllm-openai-767b477b77-82l8v   0/1     Pending     0          9s
+```
+
+Pod scaled up
+```
+kubectl get pods -n ml-serve --watch
+NAME                           READY   STATUS      RESTARTS   AGE
+gradio-6b8698d7b4-88zm7        1/1     Running     0          10d
+model-eval-2sxg2               0/1     Completed   0          8d
+vllm-openai-767b477b77-2jm4v   1/1     Running     0          3d17h
+vllm-openai-767b477b77-82l8v   1/1     Running     0          111s
+```
+
+The new pod is deployed on a node triggered by autoscaler.
+Note: The existing node where inference workload was deployed in this case had only two GPUS. Hence a new node is required to deploy the copy pod of inference workload.
+
+```
+kubectl describe pods vllm-openai-767b477b77-82l8v -n ml-serve
+
+Events:
+  Type     Reason                  Age    From                                   Message
+  ----     ------                  ----   ----                                   -------
+  Warning  FailedScheduling        4m15s  gke.io/optimize-utilization-scheduler  0/3 nodes are available: 1 Insufficient ephemeral-storage, 1 Insufficient nvidia.com/gpu, 2 node(s) didn't match Pod's node affinity/selector. preemption: 0/3 nodes are available: 1 No preemption victims found for incoming pod, 2 Preemption is not helpful for scheduling.
+  Normal   TriggeredScaleUp        4m13s  cluster-autoscaler                     pod triggered scale-up: [{https://www.googleapis.com/compute/v1/projects/gkebatchexpce3c8dcb/zones/us-east4-a/instanceGroups/gke-kh-e2e-l4-2-c399c5c0-grp 1->2 (max: 20)}]
+  Normal   Scheduled               2m40s  gke.io/optimize-utilization-scheduler  Successfully assigned ml-serve/vllm-openai-767b477b77-82l8v to gke-kh-e2e-l4-2-c399c5c0-vvm9
+  Normal   SuccessfulAttachVolume  2m36s  attachdetach-controller                AttachVolume.Attach succeeded for volume "model-weights-disk-1024gb-zone-a"
+  Normal   Pulling                 2m29s  kubelet                                Pulling image "vllm/vllm-openai:v0.5.3.post1"
+  Normal   Pulled                  2m25s  kubelet                                Successfully pulled image "vllm/vllm-openai:v0.5.3.post1" in 4.546s (4.546s including waiting). Image size: 5586843591 bytes.
+  Normal   Created                 2m25s  kubelet                                Created container inference-server
+  Normal   Started                 2m25s  kubelet                                Started container inference-server
+
+```
+
+In next iteration, we would provide details on how to scale inference workloads with GPU metrics.
 
 
 
