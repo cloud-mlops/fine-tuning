@@ -1,0 +1,27 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: vllm-openai-hpa-a
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: vllm-openai-a
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+  - type: External
+    external:
+      metric:
+        #name: kubernetes.io|container|accelerator|duty_cycle
+        name: prometheus.googleapis.com|dcgm_fi_dev_gpu_util|gauge
+      target:
+        type: AverageValue
+        averageValue: "35"
+  - type: Pods
+    pods:
+      metric:
+        name: prometheus.googleapis.com|vllm:num_requests_running|gauge
+      target:
+        type: AverageValue
+        averageValue: "5"
