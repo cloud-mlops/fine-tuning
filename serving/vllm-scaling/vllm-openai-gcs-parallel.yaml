@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-openai-nosb-pv-a
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-openai-a
+  template:
+    metadata:
+      labels:
+        app: vllm-openai-a
+      annotations:
+        gke-gcsfuse/volumes: "true"
+        gke-gcsfuse/ephemeral-storage-limit: "50Gi"
+    spec:
+      serviceAccountName: ray-worker
+      containers:
+      - name: inference-server
+        image: vllm/vllm-openai:v0.5.3.post1
+        resources:
+          requests:
+            cpu: "2"
+            memory: "25Gi"
+            ephemeral-storage: "25Gi"
+            nvidia.com/gpu: "2"
+          limits:
+            cpu: "2"
+            memory: "25Gi"
+            ephemeral-storage: "25Gi"
+            nvidia.com/gpu: "2"
+        args:
+        - --model=$(MODEL)
+        - --tensor-parallel-size=2
+        env:
+        - name: MODEL
+          value: /model-data/model-gemma2-a100/experiment-a2aa2c3it1
+        - name: VLLM_ATTENTION_BACKEND
+          value: FLASHINFER
+        volumeMounts:
+        - mountPath: /dev/shm
+          name: dshm
+        - name: gcs-fuse-csi-ephemeral
+          mountPath: /model-data
+          readOnly: true          
+      volumes:
+      - name: dshm
+        emptyDir:
+            medium: Memory
+      - name: gcs-fuse-csi-ephemeral
+        csi:
+          driver: gcsfuse.csi.storage.gke.io
+          volumeAttributes:
+            #bucketName: kh-model-data-east4
+            bucketName: kr-finetune
+            mountOptions: "implicit-dirs,file-cache:enable-parallel-downloads:true,file-cache:max-parallel-downloads:-1"            
+            fileCacheCapacity: "40Gi"
+            fileCacheForRangeRead: "true"
+            metadataStatCacheCapacity: "-1"
+            metadataTypeCacheCapacity: "-1"
+            metadataCacheTTLSeconds: "-1"
+            gcsfuseLoggingSeverity: "trace"            
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "cloud.google.com/gke-queued"
+        value: "true"
+        operator: "Equal"
+        effect: "NoSchedule"
+      nodeSelector:
+        cloud.google.com/gke-accelerator: nvidia-l4
+        pool-type: l4-2-lssd-nodws
+        cloud.google.com/gke-ephemeral-storage-local-ssd: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-openai-a
+spec:
+  selector:
+    app: vllm-openai-a
+  type: ClusterIP
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
